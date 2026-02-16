@@ -6,8 +6,8 @@ export const bbcodeToHtml = (bbcode: string) => {
 
     let html = bbcode;
 
-    // Handle escaped bracket forms coming from JSON/editor like \[/B]
-    html = html.replace(/\\\[/g, '[').replace(/\\\]/g, ']');
+    // Handle escaped bracket forms coming from JSON/editor like \[/B] or \\[/B]
+    html = html.replace(/\\+\[/g, '[').replace(/\\+\]/g, ']');
 
     // Normalize common wrong tag variants (Turkish dotted I, etc.)
     html = html

@@ -110,7 +110,7 @@ const NewsPage: React.FC = () => {
             <div className="lg:w-8/12 bg-[#0A0A0A]">
               <div
                 className="text-gray-300 text-xl md:text-2xl font-bold italic leading-relaxed space-y-8 uppercase tracking-wide quill-content"
-                dangerouslySetInnerHTML={{ __html: selectedNews.content }}
+                dangerouslySetInnerHTML={{ __html: bbcodeToHtml(selectedNews.content) }}
               />
 
               {/* Social Share */}

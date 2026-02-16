@@ -91,7 +91,7 @@ const News: React.FC<NewsProps> = ({ onViewChange }) => {
               </h3>
               <p
                 className="text-gray-400 font-bold italic text-xs md:text-base uppercase tracking-wide max-w-xl line-clamp-2 quill-content"
-                dangerouslySetInnerHTML={{ __html: mainNews.description }}
+                dangerouslySetInnerHTML={{ __html: bbcodeToHtml(mainNews.description) }}
               />
             </div>
           </div>
@@ -119,7 +119,7 @@ const News: React.FC<NewsProps> = ({ onViewChange }) => {
                   </h4>
                   <p
                     className="text-gray-500 text-[10px] font-bold italic uppercase tracking-wider line-clamp-2 quill-content"
-                    dangerouslySetInnerHTML={{ __html: news.description }}
+                    dangerouslySetInnerHTML={{ __html: bbcodeToHtml(news.description) }}
                   />
                 </div>
               </div>
