@@ -65,12 +65,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
 
       let id = rawUrl;
       if (!rawUrl.startsWith('http')) {
-        if (viewIds.has(rawUrl)) {
+        // CMS-dən sürüşmüş URL-lər gələ bildiyi üçün daxili route-da label infer-i prioritetdir.
+        if (inferred) {
+          id = inferred;
+        } else if (viewIds.has(rawUrl)) {
           id = rawUrl;
         } else if (viewIds.has(normalizedUrl)) {
           id = normalizedUrl;
-        } else if (inferred) {
-          id = inferred;
         } else {
           id = 'home';
         }
