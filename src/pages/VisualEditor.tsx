@@ -12,6 +12,7 @@ interface Section {
     label: string;
     value: string;
     url?: string;
+    order?: number;
 }
 
 interface PageImage {
@@ -19,6 +20,7 @@ interface PageImage {
     path: string;
     alt: string;
     type: 'local' | 'remote';
+    order?: number;
 }
 
 interface PageContent {
@@ -220,6 +222,8 @@ const componentLabels: Record<string, string> = {
 };
 
 const CONTENT_VERSION_KEY = 'forsaj_site_content_version';
+const normalizeOrder = (value: number | undefined, fallback: number) =>
+    Number.isFinite(value as number) ? (value as number) : fallback;
 
 const VisualEditor: React.FC = () => {
     const [pages, setPages] = useState<PageContent[]>([]);
@@ -422,7 +426,8 @@ const VisualEditor: React.FC = () => {
 
                 const cleanedContent = updatedContent.map((page: PageContent) => ({
                     ...page,
-                    sections: (page.sections || []).map((section) => {
+                    sections: (page.sections || [])
+                        .map((section, sectionIndex) => {
                         if (section.type !== 'text') return section;
 
                         const forcePlain = shouldForcePlainText(section);
@@ -432,9 +437,17 @@ const VisualEditor: React.FC = () => {
                         return {
                             ...section,
                             label: nextLabel,
-                            value: nextValue
+                            value: nextValue,
+                            order: normalizeOrder(section.order, sectionIndex)
                         };
                     })
+                        .sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0)),
+                    images: (page.images || [])
+                        .map((img, imgIndex) => ({
+                            ...img,
+                            order: normalizeOrder(img.order, imgIndex)
+                        }))
+                        .sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0))
                 }));
 
                 setPages(cleanedContent);
@@ -647,11 +660,13 @@ const VisualEditor: React.FC = () => {
 
         if (type === 'text') {
             const newId = customId || `text-${currentPage.sections.length}-${Date.now()}`;
-            currentPage.sections.push({ id: newId, type: 'text', label: customLabel || 'Bölmə', value: 'Yeni mətn sahəsi...' });
+            const nextOrder = currentPage.sections.reduce((max, s, idx) => Math.max(max, normalizeOrder(s.order, idx)), -1) + 1;
+            currentPage.sections.push({ id: newId, type: 'text', label: customLabel || 'Bölmə', value: 'Yeni mətn sahəsi...', order: nextOrder });
             toast.success(`${customLabel || 'Yeni mətn'} sahəsi əlavə edildi`);
         } else {
             const newId = customId || `img-${currentPage.images.length}-${Date.now()}`;
-            currentPage.images.push({ id: newId, path: '', alt: '', type: 'local' });
+            const nextOrder = currentPage.images.reduce((max, i, idx) => Math.max(max, normalizeOrder(i.order, idx)), -1) + 1;
+            currentPage.images.push({ id: newId, path: '', alt: '', type: 'local', order: nextOrder });
             toast.success('Yeni şəkil sahəsi əlavə edildi');
         }
 
@@ -666,8 +681,10 @@ const VisualEditor: React.FC = () => {
 
         if (type === 'text') {
             currentPage.sections = currentPage.sections.filter(s => s.id !== fieldId);
+            currentPage.sections = currentPage.sections.map((s, idx) => ({ ...s, order: idx }));
         } else {
             currentPage.images = currentPage.images.filter(img => img.id !== fieldId);
+            currentPage.images = currentPage.images.map((img, idx) => ({ ...img, order: idx }));
         }
 
         setPages(newPages);
@@ -690,6 +707,11 @@ const VisualEditor: React.FC = () => {
         const temp = list[idx];
         list[idx] = list[targetIdx];
         list[targetIdx] = temp;
+        if (type === 'text') {
+            currentPage.sections = (currentPage.sections || []).map((s, index) => ({ ...s, order: index }));
+        } else {
+            currentPage.images = (currentPage.images || []).map((img, index) => ({ ...img, order: index }));
+        }
 
         setPages(newPages);
     };
@@ -1332,7 +1354,7 @@ const VisualEditor: React.FC = () => {
         return !searchTerm ||
             s.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.value.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+    }).sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
 
     const aboutStats = currentPage?.id === 'about'
         ? (() => {
@@ -1363,7 +1385,7 @@ const VisualEditor: React.FC = () => {
         return !searchTerm ||
             i.alt.toLowerCase().includes(searchTerm.toLowerCase()) ||
             i.path.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+    }).sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
 
     const shouldUseRichEditor = (section: Section) => {
         const v = (section.value || '').toLowerCase();
@@ -2228,6 +2250,31 @@ const VisualEditor: React.FC = () => {
                                                 <Plus size={14} /> Yeni Şəkil Yeri
                                             </button>
                                         </div>
+                                        {displayedImages.length > 0 && (
+                                            <div style={{ marginBottom: '1rem' }}>
+                                                <div style={{ fontSize: '12px', fontWeight: 800, color: '#64748b', marginBottom: '8px' }}>
+                                                    Komponent Daxili Önizləmə (Sıra ilə)
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+                                                    {displayedImages.map((img, idx) => (
+                                                        <div key={`preview-${img.id}`} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', background: '#fff' }}>
+                                                            <div style={{ height: '84px', background: '#f8fafc' }}>
+                                                                {img.path ? (
+                                                                    <img src={img.path} alt={img.alt || `Preview ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '11px' }}>
+                                                                        Şəkil yoxdur
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ padding: '6px 8px', fontSize: '10px', color: '#475569', fontWeight: 700 }}>
+                                                                #{idx + 1} • {img.id}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="images-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.5rem' }}>
                                             {displayedImages.length > 0 ? (
                                                 displayedImages.map((img, visibleIndex) => {

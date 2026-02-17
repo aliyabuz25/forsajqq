@@ -1025,8 +1025,12 @@ app.all('/api/extract-content', async (req, res) => {
                     }
 
                     items.sort((a, b) => a.pos - b.pos);
-                    const sections = items.filter(i => i.item.type === 'text').map(i => i.item);
-                    const images = items.filter(i => i.item.path).map(i => i.item);
+                    const sections = items
+                        .filter(i => i.item.type === 'text')
+                        .map((i, idx) => ({ ...i.item, order: idx }));
+                    const images = items
+                        .filter(i => i.item.path)
+                        .map((i, idx) => ({ ...i.item, order: idx }));
 
                     if (sections.length > 0 || images.length > 0) {
                         pagesMap.set(pageId, {
