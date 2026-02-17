@@ -286,7 +286,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
                   <span className="w-2 h-10 bg-[#FF4D00] shadow-[0_0_10px_rgba(255,77,0,0.4)]"></span> {getText('SECTION_DESC', 'TƏSVİR')}
                 </h3>
                 <div
-                  className="text-gray-400 font-bold italic text-2xl uppercase leading-relaxed tracking-wide space-y-4 quill-content"
+                  className="text-gray-400 font-bold italic text-xl md:text-2xl leading-relaxed tracking-wide space-y-4 quill-content break-words overflow-hidden [overflow-wrap:anywhere] [&_*]:max-w-full [&_*]:whitespace-normal [&_*]:break-words"
                   dangerouslySetInnerHTML={{ __html: bbcodeToHtml(selectedEvent.description || getText('DESC_PLACEHOLDER', 'Bu tədbir haqqında ətraflı məlumat tezliklə paylaşılacaq.')) }}
                 />
               </div>
@@ -320,7 +320,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
                 </h3>
                 <div className="bg-[#111] p-12 border-l-4 border-[#FF4D00] shadow-2xl">
                   <div
-                    className="text-gray-300 font-bold italic text-xl uppercase tracking-widest leading-loose quill-content"
+                    className="text-gray-300 font-bold italic text-lg md:text-xl tracking-widest leading-loose quill-content break-words overflow-hidden [overflow-wrap:anywhere] [&_*]:max-w-full [&_*]:whitespace-normal [&_*]:break-words"
                     dangerouslySetInnerHTML={{ __html: bbcodeToHtml(selectedEvent.rules || getText('RULES_PLACEHOLDER', 'Yarış qaydaları iştirakçılara brifinq zamanı elan ediləcək.')) }}
                   />
                 </div>
