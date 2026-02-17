@@ -855,6 +855,7 @@ app.all('/api/extract-content', async (req, res) => {
                     const title = AZ_TITLES[pageId] || filenameBase;
                     const items = [];
                     const seenValues = new Set();
+                    const seenImageKeys = new Set();
 
                     // Strip noise
                     const clean = content
@@ -988,6 +989,9 @@ app.all('/api/extract-content', async (req, res) => {
                     while ((match = imgRegex.exec(clean)) !== null) {
                         const src = match[2];
                         if (src.match(/\.(png|jpg|jpeg|svg|webp|gif)/i) || src.startsWith('http')) {
+                            const imageKey = `src:${src}`;
+                            if (seenImageKeys.has(imageKey)) continue;
+                            seenImageKeys.add(imageKey);
                             items.push({
                                 pos: match.index,
                                 item: {
@@ -998,6 +1002,26 @@ app.all('/api/extract-content', async (req, res) => {
                                 }
                             });
                         }
+                    }
+
+                    // 6. Dynamic image hooks: getImage('hero-bg', 'https://...')
+                    const getImageRegex = /getImage\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)/g;
+                    while ((match = getImageRegex.exec(clean)) !== null) {
+                        const key = match[1];
+                        const fallback = match[2] || '';
+                        const imageKey = `getImage:${key}:${fallback}`;
+                        if (seenImageKeys.has(imageKey)) continue;
+                        seenImageKeys.add(imageKey);
+
+                        items.push({
+                            pos: match.index,
+                            item: {
+                                id: key,
+                                path: fallback,
+                                alt: key,
+                                type: 'local'
+                            }
+                        });
                     }
 
                     items.sort((a, b) => a.pos - b.pos);

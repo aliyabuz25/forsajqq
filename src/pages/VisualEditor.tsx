@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Save, Type, Image as ImageIcon, Layout, Globe, Plus, Trash2, X, Search, Calendar, FileText, Trophy, RotateCcw, Video, Play } from 'lucide-react';
+import { Save, Type, Image as ImageIcon, Layout, Globe, Plus, Trash2, X, Search, Calendar, FileText, Trophy, RotateCcw, Video, Play, ChevronUp, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -412,6 +412,14 @@ const VisualEditor: React.FC = () => {
                 const aboutPage = updatedContent.find(p => p.id === 'about');
                 if (aboutPage) ensureAboutDefaults(aboutPage);
 
+                const defaultRank = new Map(defaultIds.map((id, idx) => [id, idx]));
+                updatedContent.sort((a, b) => {
+                    const ra = defaultRank.has(a.id) ? (defaultRank.get(a.id) as number) : Number.MAX_SAFE_INTEGER;
+                    const rb = defaultRank.has(b.id) ? (defaultRank.get(b.id) as number) : Number.MAX_SAFE_INTEGER;
+                    if (ra !== rb) return ra - rb;
+                    return (a.title || a.id).localeCompare(b.title || b.id);
+                });
+
                 const cleanedContent = updatedContent.map((page: PageContent) => ({
                     ...page,
                     sections: (page.sections || []).map((section) => {
@@ -664,6 +672,26 @@ const VisualEditor: React.FC = () => {
 
         setPages(newPages);
         toast.success('Sahə silindi');
+    };
+
+    const moveField = (type: 'text' | 'image', fieldId: string, direction: 'up' | 'down') => {
+        if (selectedPageIndex < 0 || selectedPageIndex >= pages.length) return;
+        const newPages = [...pages];
+        const currentPage = newPages[selectedPageIndex];
+        if (!currentPage) return;
+
+        const list = type === 'text' ? currentPage.sections : currentPage.images;
+        const idx = list.findIndex((item: any) => item.id === fieldId);
+        if (idx === -1) return;
+
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= list.length) return;
+
+        const temp = list[idx];
+        list[idx] = list[targetIdx];
+        list[targetIdx] = temp;
+
+        setPages(newPages);
     };
 
     const addAboutStatRow = () => {
@@ -2103,13 +2131,17 @@ const VisualEditor: React.FC = () => {
                                                     Bu səhifədə sorğuya uyğun mətn tapılmadı.
                                                 </div>
                                             ) : (
-                                                displayedSections.map((section) => {
+                                                displayedSections.map((section, visibleIndex) => {
                                                     const editable = isSectionBusinessEditable(section);
                                                     const key = extractSectionKey(section);
                                                     const editableLabel = canEditSectionField(section, 'label');
                                                     const editableValue = canEditSectionField(section, 'value');
                                                     const editableUrl = canEditSectionField(section, 'url');
                                                     const deletable = canDeleteSection(section);
+                                                    const realSections = currentPage?.sections || [];
+                                                    const realIndex = realSections.findIndex(s => s.id === section.id);
+                                                    const canMoveUp = realIndex > 0;
+                                                    const canMoveDown = realIndex >= 0 && realIndex < realSections.length - 1;
 
                                                     return (
                                                         <div key={section.id} className="field-item-wrapper" style={{ position: 'relative', background: editable ? '#fcfcfd' : '#f8fafc', padding: '1rem', borderRadius: '12px', border: editable ? '1px solid #f0f0f2' : '1px dashed #cbd5e1' }}>
@@ -2123,6 +2155,9 @@ const VisualEditor: React.FC = () => {
                                                                 />
                                                                 <span style={{ fontSize: '10px', color: editable ? '#ccc' : '#475569' }}>
                                                                     {editable ? (key ? '• Açar mətn' : '• Mətn sahəsi') : '• Kilidli sistem sahəsi'}
+                                                                </span>
+                                                                <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#94a3b8', fontWeight: 700 }}>
+                                                                    Sıra: {visibleIndex + 1}
                                                                 </span>
                                                             </div>
                                                             {key || !shouldUseRichEditor(section) ? (
@@ -2161,6 +2196,24 @@ const VisualEditor: React.FC = () => {
                                                                     <Trash2 size={12} />
                                                                 </button>
                                                             )}
+                                                            <div style={{ position: 'absolute', right: deletable ? '42px' : '10px', top: '10px', display: 'flex', gap: '6px' }}>
+                                                                <button
+                                                                    title="Yuxarı daşı"
+                                                                    onClick={() => moveField('text', section.id, 'up')}
+                                                                    disabled={!canMoveUp}
+                                                                    style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveUp ? '#334155' : '#cbd5e1', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canMoveUp ? 'pointer' : 'not-allowed' }}
+                                                                >
+                                                                    <ChevronUp size={12} />
+                                                                </button>
+                                                                <button
+                                                                    title="Aşağı daşı"
+                                                                    onClick={() => moveField('text', section.id, 'down')}
+                                                                    disabled={!canMoveDown}
+                                                                    style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveDown ? '#334155' : '#cbd5e1', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canMoveDown ? 'pointer' : 'not-allowed' }}
+                                                                >
+                                                                    <ChevronDown size={12} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     );
                                                 })
@@ -2177,7 +2230,12 @@ const VisualEditor: React.FC = () => {
                                         </div>
                                         <div className="images-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.5rem' }}>
                                             {displayedImages.length > 0 ? (
-                                                displayedImages.map((img) => (
+                                                displayedImages.map((img, visibleIndex) => {
+                                                    const realImages = currentPage?.images || [];
+                                                    const realIndex = realImages.findIndex(i => i.id === img.id);
+                                                    const canMoveUp = realIndex > 0;
+                                                    const canMoveDown = realIndex >= 0 && realIndex < realImages.length - 1;
+                                                    return (
                                                     <div key={img.id} className="image-edit-card" style={{ border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden', background: '#fff', position: 'relative' }}>
                                                         <button
                                                             className="field-delete-btn"
@@ -2186,6 +2244,24 @@ const VisualEditor: React.FC = () => {
                                                         >
                                                             <Trash2 size={12} />
                                                         </button>
+                                                        <div style={{ position: 'absolute', right: '40px', top: '8px', zIndex: 10, display: 'flex', gap: '6px' }}>
+                                                            <button
+                                                                title="Yuxarı daşı"
+                                                                onClick={() => moveField('image', img.id, 'up')}
+                                                                disabled={!canMoveUp}
+                                                                style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #e2e8f0', color: canMoveUp ? '#334155' : '#cbd5e1', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canMoveUp ? 'pointer' : 'not-allowed' }}
+                                                            >
+                                                                <ChevronUp size={12} />
+                                                            </button>
+                                                            <button
+                                                                title="Aşağı daşı"
+                                                                onClick={() => moveField('image', img.id, 'down')}
+                                                                disabled={!canMoveDown}
+                                                                style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #e2e8f0', color: canMoveDown ? '#334155' : '#cbd5e1', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canMoveDown ? 'pointer' : 'not-allowed' }}
+                                                            >
+                                                                <ChevronDown size={12} />
+                                                            </button>
+                                                        </div>
                                                         <div style={{ height: '120px', background: '#f8fafc', position: 'relative', overflow: 'hidden' }}>
                                                             {img.path && (img.path.startsWith('http') || img.path.startsWith('/')) ? (
                                                                 <img src={img.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2197,6 +2273,9 @@ const VisualEditor: React.FC = () => {
                                                             )}
                                                         </div>
                                                         <div style={{ padding: '0.75rem' }}>
+                                                            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginBottom: '6px' }}>
+                                                                Sıra: {visibleIndex + 1}
+                                                            </div>
                                                             <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '4px' }}>
                                                                 <input
                                                                     type="text"
@@ -2248,7 +2327,7 @@ const VisualEditor: React.FC = () => {
                                                             />
                                                         </div>
                                                     </div>
-                                                ))) : (
+                                                )})) : (
                                                 <div className="empty-fields-tip" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1', color: '#64748b' }}>
                                                     {searchTerm ? 'Sorğuya uyğun şəkil tapılmadı.' : 'Bu bölmədə redaktə ediləcək şəkil yoxdur.'}
                                                 </div>
