@@ -1,7 +1,7 @@
 :root {
-    --premium-primary: #4f46e5;
-    /* Solid Indigo */
-    --premium-primary-hover: #4338ca;
+    --premium-primary: #3b82f6;
+    /* AdminCP blue */
+    --premium-primary-hover: #2563eb;
     --premium-bg: #f8fafc;
     --premium-border: #e2e8f0;
     --premium-text: #0f172a;
@@ -82,7 +82,7 @@
 .header-search-input:focus {
     background: white;
     border-color: var(--premium-primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .header-actions {
@@ -211,9 +211,9 @@
 }
 
 .page-nav-item.active {
-    background: #eef2ff;
-    color: #4338ca;
-    border-color: #c7d2fe;
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
 }
 
 .editor-tip {
@@ -279,7 +279,7 @@
 .field-group label {
     font-size: 0.75rem;
     font-weight: 700;
-    color: #6366f1;
+    color: var(--premium-primary);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -302,9 +302,9 @@
 .field-group input:focus,
 .field-group textarea:focus,
 .field-group select:focus {
-    border-color: #6366f1;
+    border-color: var(--premium-primary);
     background: white;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
 
 .image-placeholder-box {
