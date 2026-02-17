@@ -7,6 +7,11 @@ const About: React.FC = () => {
   const { getPage, getText, getImage } = useSiteContent('about');
   const { getText: getGeneralText } = useSiteContent('general');
   const page = getPage('about');
+  const toPlainText = (value: string) => {
+    if (!value) return '';
+    const doc = new DOMParser().parseFromString(value, 'text/html');
+    return (doc.body.textContent || '').replace(/\u00a0/g, ' ').trim();
+  };
 
   const dynamicStats: any[] = [];
   const dynamicValues: any[] = [];
@@ -94,10 +99,10 @@ const About: React.FC = () => {
         <div className="lg:w-7/12 relative z-10">
           <div className="mt-4">
             <h4 className="text-[#FF4D00] font-black italic text-2xl mb-4 tracking-tight">
-              {getText('txt-est-2018-motorsp-949', 'EST. 2018 // MOTORSPORT MƏRKƏZİ')}
+              {toPlainText(getText('txt-est-2018-motorsp-949', 'EST. 2018 // MOTORSPORT MƏRKƏZİ'))}
             </h4>
             <h2 className="text-3xl md:text-5xl font-black italic leading-tight mb-8 uppercase max-w-2xl text-white tracking-tighter">
-              {getText('txt-forsaj-club-az-rba-66', '"FORSAJ CLUB" AZƏRBAYCANIN OFFROAD MƏDƏNİYYƏTİNİ PEŞƏKAR SƏVİYYƏYƏ ÇATDIRMAQ ÜÇÜN YARADILMIŞDIR.')}
+              {toPlainText(getText('txt-forsaj-club-az-rba-66', '"FORSAJ CLUB" AZƏRBAYCANIN OFFROAD MƏDƏNİYYƏTİNİ PEŞƏKAR SƏVİYYƏYƏ ÇATDIRMAQ ÜÇÜN YARADILMIŞDIR.'))}
             </h2>
             <p
               className="text-gray-400 font-bold italic text-sm md:text-base leading-relaxed mb-12 max-w-xl uppercase tracking-wide"
