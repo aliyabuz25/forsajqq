@@ -122,6 +122,15 @@ const extractSectionKey = (section: Section) => {
     return '';
 };
 
+const STAT_LABEL_PREFIX = 'label-stat-';
+const STAT_VALUE_PREFIX = 'value-stat-';
+const isStatSectionId = (id: string) => id.startsWith(STAT_LABEL_PREFIX) || id.startsWith(STAT_VALUE_PREFIX);
+const getStatSuffix = (id: string) => id.startsWith(STAT_LABEL_PREFIX)
+    ? id.slice(STAT_LABEL_PREFIX.length)
+    : id.startsWith(STAT_VALUE_PREFIX)
+        ? id.slice(STAT_VALUE_PREFIX.length)
+        : '';
+
 const isSectionBusinessEditable = (_section: Section) => {
     return true;
 };
@@ -525,6 +534,57 @@ const VisualEditor: React.FC = () => {
 
         setPages(newPages);
         toast.success('Sahə silindi');
+    };
+
+    const addAboutStatRow = () => {
+        if (selectedPageIndex < 0 || selectedPageIndex >= pages.length) return;
+        const newPages = [...pages];
+        const current = newPages[selectedPageIndex];
+        if (!current || current.id !== 'about') return;
+
+        const suffix = `${Date.now()}`;
+        current.sections.push(
+            { id: `${STAT_LABEL_PREFIX}${suffix}`, type: 'text', label: 'Statistika Etiketi', value: 'YENİ STATİSTİKA' },
+            { id: `${STAT_VALUE_PREFIX}${suffix}`, type: 'text', label: 'Statistika Dəyəri', value: '0+' }
+        );
+        setPages(newPages);
+        toast.success('Yeni statistika əlavə edildi');
+    };
+
+    const updateAboutStatField = (suffix: string, field: 'label' | 'value', value: string) => {
+        if (selectedPageIndex < 0 || selectedPageIndex >= pages.length) return;
+        const newPages = [...pages];
+        const current = newPages[selectedPageIndex];
+        if (!current || current.id !== 'about') return;
+
+        const targetId = field === 'label' ? `${STAT_LABEL_PREFIX}${suffix}` : `${STAT_VALUE_PREFIX}${suffix}`;
+        const idx = current.sections.findIndex(s => s.id === targetId);
+
+        if (idx !== -1) {
+            current.sections[idx].value = value;
+        } else {
+            current.sections.push({
+                id: targetId,
+                type: 'text',
+                label: field === 'label' ? 'Statistika Etiketi' : 'Statistika Dəyəri',
+                value
+            });
+        }
+
+        setPages(newPages);
+    };
+
+    const removeAboutStatRow = (suffix: string) => {
+        if (selectedPageIndex < 0 || selectedPageIndex >= pages.length) return;
+        const newPages = [...pages];
+        const current = newPages[selectedPageIndex];
+        if (!current || current.id !== 'about') return;
+
+        current.sections = current.sections.filter(
+            s => s.id !== `${STAT_LABEL_PREFIX}${suffix}` && s.id !== `${STAT_VALUE_PREFIX}${suffix}`
+        );
+        setPages(newPages);
+        toast.success('Statistika silindi');
     };
 
     const openImageSelector = (pageIdx: number, imgId: string) => {
@@ -1100,10 +1160,36 @@ const VisualEditor: React.FC = () => {
 
     const displayedSections = (currentPage?.sections || []).filter(s => {
         if (!isSectionVisibleInAdmin(s)) return false;
+        if (currentPage?.id === 'about' && isStatSectionId(s.id)) return false;
         return !searchTerm ||
             s.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.value.toLowerCase().includes(searchTerm.toLowerCase());
     });
+
+    const aboutStats = currentPage?.id === 'about'
+        ? (() => {
+            const statsMap = new Map<string, { label: string; value: string }>();
+
+            (currentPage.sections || []).forEach(section => {
+                if (!isStatSectionId(section.id)) return;
+                const suffix = getStatSuffix(section.id) || section.id;
+                const current = statsMap.get(suffix) || { label: '', value: '' };
+
+                if (section.id.startsWith(STAT_LABEL_PREFIX)) current.label = section.value || '';
+                if (section.id.startsWith(STAT_VALUE_PREFIX)) current.value = section.value || '';
+
+                statsMap.set(suffix, current);
+            });
+
+            const rows = Array.from(statsMap.entries())
+                .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+                .map(([suffix, data]) => ({ suffix, ...data }));
+
+            if (!searchTerm) return rows;
+            const q = searchTerm.toLowerCase();
+            return rows.filter(row => row.label.toLowerCase().includes(q) || row.value.toLowerCase().includes(q));
+        })()
+        : [];
 
     const displayedImages = (currentPage?.images || []).filter(i => {
         return !searchTerm ||
@@ -1755,10 +1841,7 @@ const VisualEditor: React.FC = () => {
                                     </h2>
                                     <div className="canvas-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                         {currentPage.id === 'about' && (
-                                            <button className="add-field-minimal" onClick={() => {
-                                                addField('text', 'Statistika Etiketi', `label-stat-${Date.now()}`);
-                                                addField('text', 'Statistika Dəyəri', `value-stat-${Date.now()}`);
-                                            }} style={{ background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe' }}>
+                                            <button className="add-field-minimal" onClick={addAboutStatRow} style={{ background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe' }}>
                                                 <Trophy size={14} /> Statistika Əlavə Et
                                             </button>
                                         )}
@@ -1808,9 +1891,53 @@ const VisualEditor: React.FC = () => {
                                 </div>
 
                                 <div className="edit-fields">
+                                    {currentPage.id === 'about' && (
+                                        <div className="field-group">
+                                            <div className="field-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <label><Trophy size={16} /> Statistikalar</label>
+                                                <button className="add-field-minimal" onClick={addAboutStatRow}>
+                                                    <Plus size={14} /> Yeni Statistika
+                                                </button>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {aboutStats.length > 0 ? (
+                                                    aboutStats.map((row) => (
+                                                        <div key={row.suffix} style={{ display: 'grid', gridTemplateColumns: '1fr 180px auto', gap: '8px', alignItems: 'center', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '10px', background: '#fff' }}>
+                                                            <input
+                                                                type="text"
+                                                                value={row.label}
+                                                                onChange={(e) => updateAboutStatField(row.suffix, 'label', e.target.value)}
+                                                                placeholder="Statistika adı (Məs: PİLOTLAR)"
+                                                                style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700 }}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                value={row.value}
+                                                                onChange={(e) => updateAboutStatField(row.suffix, 'value', e.target.value)}
+                                                                placeholder="Dəyər (Məs: 140+)"
+                                                                style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700 }}
+                                                            />
+                                                            <button
+                                                                onClick={() => removeAboutStatRow(row.suffix)}
+                                                                title="Statistikanı sil"
+                                                                style={{ background: '#fff', border: '1px solid #fee2e2', color: '#ef4444', borderRadius: '8px', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#64748b', fontSize: '13px' }}>
+                                                        {searchTerm ? 'Axtarışa uyğun statistika tapılmadı.' : 'Hələ statistika yoxdur. "Yeni Statistika" ilə əlavə edin.'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="field-group">
                                         <div className="field-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <label><Type size={16} /> Mətn Rezervləri</label>
+                                            <label><Type size={16} /> Mətn Sahələri</label>
                                             <button className="add-field-minimal" onClick={() => addField('text')}>
                                                 <Plus size={14} /> Mətn Əlavə Et
                                             </button>
@@ -1840,7 +1967,7 @@ const VisualEditor: React.FC = () => {
                                                                     style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', border: 'none', background: 'none', width: 'auto', padding: 0 }}
                                                                 />
                                                                 <span style={{ fontSize: '10px', color: editable ? '#ccc' : '#475569' }}>
-                                                                    {editable ? (key ? '• MƏZMUN AÇARI (YALNIZ DƏYƏR)' : '• REZERV') : '• SİSTEM / KOD (KİLİDLİ)'}
+                                                                    {editable ? (key ? '• Açar sahə (dəyər redaktəsi)' : '• Standart mətn sahəsi') : '• Kilidli sistem sahəsi'}
                                                                 </span>
                                                             </div>
                                                             <QuillEditor
