@@ -182,6 +182,38 @@ const GeneralSettings: React.FC = () => {
         setPages(newPages);
     };
 
+    const getMarqueeSectionValue = (id: string) => {
+        const marqueePage = pages.find((p) => p.id === 'marquee');
+        if (!marqueePage) return '';
+        return marqueePage.sections?.find((sec: any) => sec.id === id)?.value || '';
+    };
+
+    const setMarqueeSectionValue = (id: string, value: string) => {
+        const newPages = [...pages];
+        const pageIdx = ensurePage(newPages, 'marquee');
+        const sections = newPages[pageIdx].sections;
+        const sectionIdx = sections.findIndex((sec: any) => sec.id === id);
+
+        if (sectionIdx >= 0) {
+            sections[sectionIdx].value = value;
+        } else {
+            sections.push({ id, type: 'text', label: id, value });
+        }
+        setPages(newPages);
+    };
+
+    const getMarqueeLinkValue = () => getMarqueeSectionValue('MARQUEE_LINK');
+    const setMarqueeLinkValue = (value: string) => setMarqueeSectionValue('MARQUEE_LINK', value);
+
+    const getMarqueeLinkActive = () => {
+        const rawValue = (getMarqueeSectionValue('MARQUEE_LINK_ACTIVE') || '').toString().trim().toLowerCase();
+        return rawValue === '1' || rawValue === 'true' || rawValue === 'yes' || rawValue === 'on';
+    };
+
+    const setMarqueeLinkActive = (active: boolean) => {
+        setMarqueeSectionValue('MARQUEE_LINK_ACTIVE', active ? '1' : '0');
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, id: string, pageId: string = 'general') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -644,6 +676,25 @@ const GeneralSettings: React.FC = () => {
                                 onChange={(e) => updateMarqueeTextValue(e.target.value)}
                                 placeholder="Məs: FORSAJ CLUB // OFFROAD MOTORSPORT HUB"
                             />
+                        </div>
+                        <div className="field-group">
+                            <label>Link əlavə et</label>
+                            <input
+                                type="text"
+                                value={getMarqueeLinkValue()}
+                                onChange={(e) => setMarqueeLinkValue(e.target.value)}
+                                placeholder="Məs: /events və ya https://forsaj.az/events"
+                            />
+                        </div>
+                        <div className="field-group">
+                            <label className="toggle-row">
+                                <input
+                                    type="checkbox"
+                                    checked={getMarqueeLinkActive()}
+                                    onChange={(e) => setMarqueeLinkActive(e.target.checked)}
+                                />
+                                <span>Link aktivdir (aktiv/deaktiv)</span>
+                            </label>
                         </div>
                         <div className="field-group">
                             <label>Marquee arxa plan şəkli</label>

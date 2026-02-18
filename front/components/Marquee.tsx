@@ -13,6 +13,12 @@ const Marquee: React.FC = () => {
     marqueePage.sections?.find((section: any) => section.id === 'MARQUEE_TEXT')?.value ||
     marqueePage.sections?.[0]?.value ||
     'FORSAJ CLUB';
+  const marqueeLink =
+    marqueePage.sections?.find((section: any) => section.id === 'MARQUEE_LINK')?.value?.trim() || '';
+  const rawLinkActive =
+    marqueePage.sections?.find((section: any) => section.id === 'MARQUEE_LINK_ACTIVE')?.value || '';
+  const isLinkActive = ['1', 'true', 'yes', 'on'].includes(String(rawLinkActive).trim().toLowerCase());
+  const canUseLink = isLinkActive && marqueeLink.length > 0;
 
   const MarqueeItem = () => (
     <div className="inline-flex items-center gap-8 mx-8">
@@ -24,15 +30,8 @@ const Marquee: React.FC = () => {
     </div>
   );
 
-  return (
-    <div className="bg-[#FF4D00] py-3 overflow-hidden whitespace-nowrap relative border-b border-[#CC3D00] flex items-center">
-      {marqueeImage.path && (
-        <img
-          src={marqueeImage.path}
-          alt={marqueeImage.alt || 'Marquee'}
-          className="absolute inset-0 w-full h-full object-cover opacity-15"
-        />
-      )}
+  const marqueeStream = (
+    <>
       <div className="inline-block animate-marquee">
         {new Array(10).fill(null).map((_, i) => (
           <MarqueeItem key={i} />
@@ -43,6 +42,28 @@ const Marquee: React.FC = () => {
           <MarqueeItem key={i} />
         ))}
       </div>
+    </>
+  );
+
+  return (
+    <div className="bg-[#FF4D00] py-3 overflow-hidden whitespace-nowrap relative border-b border-[#CC3D00] flex items-center">
+      {marqueeImage.path && (
+        <img
+          src={marqueeImage.path}
+          alt={marqueeImage.alt || 'Marquee'}
+          className="absolute inset-0 w-full h-full object-cover opacity-15"
+        />
+      )}
+      {canUseLink ? (
+        <a
+          href={marqueeLink}
+          target={/^https?:\/\//i.test(marqueeLink) ? '_blank' : undefined}
+          rel={/^https?:\/\//i.test(marqueeLink) ? 'noopener noreferrer' : undefined}
+          className="cursor-pointer"
+        >
+          {marqueeStream}
+        </a>
+      ) : marqueeStream}
       <style>{`
         @keyframes marquee {
           0% { transform: translateX(0); }
