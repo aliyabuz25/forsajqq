@@ -1,14 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Image as ImageIcon, BarChart3, Save, Upload, Mail } from 'lucide-react';
+import { Globe, Image as ImageIcon, BarChart3, Save, Upload, Mail, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import './GeneralSettings.css';
+
+const HIDDEN_SETTINGS_STORAGE_KEY = 'forsaj_general_hidden_cards';
 
 const GeneralSettings: React.FC = () => {
     const [pages, setPages] = useState<any[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [hiddenCards, setHiddenCards] = useState<string[]>(() => {
+        try {
+            const rawValue = localStorage.getItem(HIDDEN_SETTINGS_STORAGE_KEY);
+            const parsed = rawValue ? JSON.parse(rawValue) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    });
     const location = useLocation();
+    const activeTab = new URLSearchParams(location.search).get('tab');
+    const isHiddenTab = activeTab === 'hidden';
+
+    const isCardHidden = (sectionId: string) => hiddenCards.includes(sectionId);
+    const shouldRenderCard = (sectionId: string) => isHiddenTab ? isCardHidden(sectionId) : !isCardHidden(sectionId);
+    const getCardClassName = (sectionId: string) =>
+        `settings-card shadow-sm${shouldRenderCard(sectionId) ? '' : ' settings-card-hidden'}`;
+
+    const hideCard = (sectionId: string) => {
+        setHiddenCards((prev) => prev.includes(sectionId) ? prev : [...prev, sectionId]);
+    };
+
+    const restoreCard = (sectionId: string) => {
+        setHiddenCards((prev) => prev.filter((id) => id !== sectionId));
+    };
+
+    const renderCardAction = (sectionId: string) => {
+        const hidden = isCardHidden(sectionId);
+        const isRestoreAction = isHiddenTab && hidden;
+
+        return (
+            <button
+                type="button"
+                className="card-visibility-btn"
+                onClick={() => (hidden ? restoreCard(sectionId) : hideCard(sectionId))}
+                title={isRestoreAction ? 'Kartı geri gətir' : 'Kartı gizlət'}
+                aria-label={isRestoreAction ? 'Kartı geri gətir' : 'Kartı gizlət'}
+            >
+                {isRestoreAction ? <Eye size={16} /> : <EyeOff size={16} />}
+            </button>
+        );
+    };
 
     const loadSettings = async () => {
         try {
@@ -24,6 +67,10 @@ const GeneralSettings: React.FC = () => {
     useEffect(() => {
         loadSettings();
     }, []);
+
+    useEffect(() => {
+        localStorage.setItem(HIDDEN_SETTINGS_STORAGE_KEY, JSON.stringify(hiddenCards));
+    }, [hiddenCards]);
 
     useEffect(() => {
         if (isLoading) return;
@@ -128,7 +175,7 @@ const GeneralSettings: React.FC = () => {
             <div className="settings-header">
                 <div>
                     <h1>Sistem Ayarları</h1>
-                    <p>SEO, Brendinq və ümumi sayt tənzimləmələri</p>
+                    <p>{isHiddenTab ? 'Gizlədilmiş ayar kartları' : 'SEO, Brendinq və ümumi sayt tənzimləmələri'}</p>
                 </div>
                 <button className="save-btn" onClick={saveChanges} disabled={isSaving}>
                     <Save size={18} />
@@ -136,12 +183,19 @@ const GeneralSettings: React.FC = () => {
                 </button>
             </div>
 
+            {isHiddenTab && hiddenCards.length === 0 && (
+                <div className="hidden-settings-empty">
+                    Gizlənmiş kart yoxdur. Kartları gizlətmək üçün normal görünüşdə kartın üzərinə gəlib göz ikonuna klikləyin.
+                </div>
+            )}
+
             <div className="settings-grid">
                 {/* SEO Section */}
-                <div className="settings-card shadow-sm" data-settings-section="seo-basic">
+                <div className={getCardClassName('seo-basic')} data-settings-section="seo-basic">
                     <div className="card-header">
                         <Globe size={20} className="text-blue-500" />
                         <h2>SEO və axtarış motoru</h2>
+                        {renderCardAction('seo-basic')}
                     </div>
                     <div className="card-body">
                         <div className="field-group">
@@ -212,10 +266,11 @@ const GeneralSettings: React.FC = () => {
                 </div>
 
                 {/* Open Graph / Twitter SEO */}
-                <div className="settings-card shadow-sm" data-settings-section="seo-social">
+                <div className={getCardClassName('seo-social')} data-settings-section="seo-social">
                     <div className="card-header">
                         <Globe size={20} className="text-cyan-500" />
                         <h2>Sosial paylaşım SEO (OG / Twitter)</h2>
+                        {renderCardAction('seo-social')}
                     </div>
                     <div className="card-body">
                         <div className="field-group">
@@ -301,10 +356,11 @@ const GeneralSettings: React.FC = () => {
                 </div>
 
                 {/* Verification Section */}
-                <div className="settings-card shadow-sm" data-settings-section="seo-verify">
+                <div className={getCardClassName('seo-verify')} data-settings-section="seo-verify">
                     <div className="card-header">
                         <BarChart3 size={20} className="text-violet-500" />
                         <h2>Axtarış motoru təsdiqləri</h2>
+                        {renderCardAction('seo-verify')}
                     </div>
                     <div className="card-body">
                         <div className="field-group">
@@ -338,10 +394,11 @@ const GeneralSettings: React.FC = () => {
                 </div>
 
                 {/* Branding Section */}
-                <div className="settings-card shadow-sm" data-settings-section="branding">
+                <div className={getCardClassName('branding')} data-settings-section="branding">
                     <div className="card-header">
                         <ImageIcon size={20} className="text-orange-500" />
                         <h2>Brendinq & Loqo</h2>
+                        {renderCardAction('branding')}
                     </div>
                     <div className="card-body">
                         <div className="logo-upload-grid">
@@ -378,10 +435,11 @@ const GeneralSettings: React.FC = () => {
                 </div>
 
                 {/* Contact Details Section */}
-                <div className="settings-card shadow-sm" data-settings-section="contact-details">
+                <div className={getCardClassName('contact-details')} data-settings-section="contact-details">
                     <div className="card-header">
                         <ImageIcon size={20} className="text-red-500" />
                         <h2>Əlaqə & Ünvan Məlumatları</h2>
+                        {renderCardAction('contact-details')}
                     </div>
                     <div className="card-body">
                         <div className="field-group">
@@ -435,10 +493,11 @@ const GeneralSettings: React.FC = () => {
                 </div>
 
                 {/* Department Emails Section */}
-                <div className="settings-card shadow-sm" data-settings-section="departments">
+                <div className={getCardClassName('departments')} data-settings-section="departments">
                     <div className="card-header">
                         <Mail size={20} className="text-purple-500" />
                         <h2>Şöbə E-poçtları</h2>
+                        {renderCardAction('departments')}
                     </div>
                     <div className="card-body">
                         <div className="field-group">
@@ -472,10 +531,11 @@ const GeneralSettings: React.FC = () => {
                 </div>
 
                 {/* Social Links Section */}
-                <div className="settings-card shadow-sm" data-settings-section="social-links">
+                <div className={getCardClassName('social-links')} data-settings-section="social-links">
                     <div className="card-header">
                         <Globe size={20} className="text-pink-500" />
                         <h2>Sosial Media Linkləri</h2>
+                        {renderCardAction('social-links')}
                     </div>
                     <div className="card-body">
                         <div className="field-group">
@@ -509,10 +569,11 @@ const GeneralSettings: React.FC = () => {
                 </div>
 
                 {/* Stats Section */}
-                <div className="settings-card shadow-sm" data-settings-section="stats">
+                <div className={getCardClassName('stats')} data-settings-section="stats">
                     <div className="card-header">
                         <BarChart3 size={20} className="text-green-500" />
                         <h2>Sayt Statistikaları</h2>
+                        {renderCardAction('stats')}
                     </div>
                     <div className="card-body">
                         <div className="stats-edit-grid">

@@ -57,6 +57,10 @@
     border: 1px solid #e5e7eb;
 }
 
+.settings-card-hidden {
+    display: none;
+}
+
 .card-header {
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid #e5e7eb;
@@ -70,8 +74,44 @@
     font-weight: 600;
 }
 
+.card-visibility-btn {
+    margin-left: auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.settings-card:hover .card-visibility-btn {
+    opacity: 1;
+}
+
+.card-visibility-btn:hover {
+    transform: translateY(-1px);
+    color: #2563eb;
+    border-color: #93c5fd;
+}
+
 .card-body {
     padding: 1.5rem;
+}
+
+.hidden-settings-empty {
+    margin-bottom: 1.25rem;
+    padding: 1rem 1.25rem;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.92rem;
 }
 
 .field-group {
