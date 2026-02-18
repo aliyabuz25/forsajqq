@@ -2317,6 +2317,11 @@ const VisualEditor: React.FC = () => {
         !!PAGE_TO_TAB_GROUP[pageParam]
     );
     const isGroupedTabView = editorMode === 'extract' && isGroupedRequest && activeGroupPages.length > 0;
+    const searchQuery = searchTerm.trim().toLowerCase();
+    const matchesSearch = (...values: Array<string | number | undefined>) => {
+        if (!searchQuery) return true;
+        return values.some((value) => (value || '').toString().toLowerCase().includes(searchQuery));
+    };
 
     const displayedSections = (currentPage?.sections || []).filter(s => {
         if (!isSectionVisibleInAdmin(s)) return false;
@@ -2325,9 +2330,7 @@ const VisualEditor: React.FC = () => {
         if (currentPage?.id === 'partners' && (PARTNER_KEY_REGEX.test(s.id) || s.id === 'SECTION_TITLE')) return false;
         if (currentPage?.id === 'rulespage' && RULE_TAB_SECTION_REGEX.test(s.id)) return false;
         if (currentPage?.id === 'rulespage' && s.id.startsWith('RULES_')) return false;
-        return !searchTerm ||
-            s.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.value.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch(s.id, s.label, s.value, s.url);
     }).sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
 
     const aboutStats = currentPage?.id === 'about'
@@ -2349,9 +2352,7 @@ const VisualEditor: React.FC = () => {
                 .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
                 .map(([suffix, data]) => ({ suffix, ...data }));
 
-            if (!searchTerm) return rows;
-            const q = searchTerm.toLowerCase();
-            return rows.filter(row => row.label.toLowerCase().includes(q) || row.value.toLowerCase().includes(q));
+            return rows.filter((row) => matchesSearch(row.suffix, row.label, row.value));
         })()
         : [];
 
@@ -2359,9 +2360,7 @@ const VisualEditor: React.FC = () => {
     const rulesTabRows = currentPage?.id === 'rulespage' ? getRulesTabRows(currentPage) : [];
 
     const displayedImages = (currentPage?.images || []).filter(i => {
-        return !searchTerm ||
-            i.alt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            i.path.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch(i.id, i.alt, i.path);
     }).sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
 
     const shouldUseRichEditor = (section: Section) => {
@@ -2544,12 +2543,6 @@ const VisualEditor: React.FC = () => {
         if (extraSections.length > 0) groups.push({ title: 'Digər Sahələr', subtitle: 'Avtomatik qruplaşdırıla bilməyən sahələr', sections: extraSections });
         return groups;
     })();
-
-    const searchQuery = searchTerm.trim().toLowerCase();
-    const matchesSearch = (...values: Array<string | number | undefined>) => {
-        if (!searchQuery) return true;
-        return values.some((value) => (value || '').toString().toLowerCase().includes(searchQuery));
-    };
 
     const filteredNews = news.filter((item) =>
         matchesSearch(item.title, item.date, item.category, item.status, item.description)
@@ -3433,10 +3426,11 @@ const VisualEditor: React.FC = () => {
                                             if (page.id === 'about' && isStatSectionId(section.id)) return false;
                                             if (page.id === 'rulespage' && RULE_TAB_SECTION_REGEX.test(section.id)) return false;
                                             if (page.id === 'rulespage' && section.id.startsWith('RULES_')) return false;
-                                            return true;
+                                            return matchesSearch(section.id, section.label, section.value, section.url);
                                         })
                                         .sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
                                     const pageImages = (page.images || [])
+                                        .filter((img) => matchesSearch(img.id, img.alt, img.path))
                                         .sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
                                     const pageAboutStats = page.id === 'about'
                                         ? (() => {
@@ -3451,10 +3445,27 @@ const VisualEditor: React.FC = () => {
                                             });
                                             return Array.from(statsMap.entries())
                                                 .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-                                                .map(([suffix, data]) => ({ suffix, ...data }));
+                                                .map(([suffix, data]) => ({ suffix, ...data }))
+                                                .filter((row) => matchesSearch(row.suffix, row.label, row.value));
                                         })()
                                         : [];
-                                    const pageRuleTabs = page.id === 'rulespage' ? getRulesTabRows(page) : [];
+                                    const pageRuleTabs = page.id === 'rulespage'
+                                        ? getRulesTabRows(page).filter((row) =>
+                                            matchesSearch(
+                                                row.id,
+                                                row.title,
+                                                row.icon,
+                                                row.docName,
+                                                row.docButton,
+                                                row.docUrl,
+                                                ...(row.items || []).flatMap((item) => [item.title, item.desc])
+                                            )
+                                        )
+                                        : [];
+
+                                    if (searchQuery && pageSections.length === 0 && pageImages.length === 0 && pageAboutStats.length === 0 && pageRuleTabs.length === 0) {
+                                        return null;
+                                    }
 
                                     return (
                                         <div key={page.id} className="field-group">
