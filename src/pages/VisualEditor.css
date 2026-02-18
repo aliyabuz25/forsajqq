@@ -608,10 +608,38 @@
 }
 
 .section-hide-toggle input[type="checkbox"] {
-    width: 15px;
-    height: 15px;
-    accent-color: #2563eb;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #94a3b8;
+    border-radius: 5px;
+    background: #ffffff;
     cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.section-hide-toggle input[type="checkbox"]::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) scale(0);
+    transition: transform 0.15s ease;
+}
+
+.section-hide-toggle input[type="checkbox"]:checked {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.section-hide-toggle input[type="checkbox"]:checked::after {
+    transform: rotate(45deg) scale(1);
 }
 
 .section-hide-toggle input[type="checkbox"]:focus-visible {
