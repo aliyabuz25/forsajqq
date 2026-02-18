@@ -97,6 +97,32 @@ const QUILL_MODULES = {
     ],
 };
 
+const ICON_PRESETS = ['Shield', 'Users', 'Leaf', 'Zap', 'Target', 'Globe', 'Star', 'Flag'];
+
+const bbcodeToHtmlForEditor = (raw: string) => {
+    if (!raw) return '';
+
+    const value = raw.replace(/\\+\[/g, '[').replace(/\\+\]/g, ']');
+    const hasBbcode = /\[(\/?)(B|I|U|S|CENTER|FONT|URL|IMG|COLOR|SIZE|QUOTE|CODE|LIST|\*)[\]=\s\w"':#.,+-]*\]/i.test(value);
+    if (!hasBbcode) return value;
+
+    let html = value;
+    html = html.replace(/\[CENTER\]([\s\S]*?)\[\/CENTER\]/gi, '<div style="text-align:center;">$1</div>');
+    html = html.replace(/\[FONT=([^\]]+)\]([\s\S]*?)\[\/FONT\]/gi, '<span style="font-family:$1;">$2</span>');
+    html = html.replace(/\[B\]([\s\S]*?)\[\/B\]/gi, '<strong>$1</strong>');
+    html = html.replace(/\[I\]([\s\S]*?)\[\/I\]/gi, '<em>$1</em>');
+    html = html.replace(/\[U\]([\s\S]*?)\[\/U\]/gi, '<span style="text-decoration:underline;">$1</span>');
+    html = html.replace(/\[S\]([\s\S]*?)\[\/S\]/gi, '<strike>$1</strike>');
+    html = html.replace(/\[URL=([^\]]+)\]([\s\S]*?)\[\/URL\]/gi, '<a href="$1" target="_blank" rel="noopener noreferrer">$2</a>');
+    html = html.replace(/\[IMG\]([\s\S]*?)\[\/IMG\]/gi, '<img src="$1" style="max-width:100%;" />');
+    html = html.replace(/\[COLOR=([^\]]+)\]([\s\S]*?)\[\/COLOR\]/gi, '<span style="color:$1;">$2</span>');
+    html = html.replace(/\[SIZE=([^\]]+)\]([\s\S]*?)\[\/SIZE\]/gi, '<span style="font-size:$1px;">$2</span>');
+    html = html.replace(/\[QUOTE\]([\s\S]*?)\[\/QUOTE\]/gi, '<blockquote>$1</blockquote>');
+    html = html.replace(/\[CODE\]([\s\S]*?)\[\/CODE\]/gi, '<pre><code>$1</code></pre>');
+    html = html.replace(/\r?\n/g, '<br />');
+    return html;
+};
+
 const QuillEditor: React.FC<{ value: string, onChange: (val: string) => void, id: string, readOnly?: boolean }> = ({ value, onChange, id, readOnly = false }) => {
     return (
         <div className="quill-editor-wrapper" id={id}>
@@ -1676,6 +1702,10 @@ const VisualEditor: React.FC = () => {
         );
     };
 
+    const isIconField = (section: Section) =>
+        section.id.startsWith('val-icon-') ||
+        /ikon|icon/i.test(section.label || '');
+
     const searchQuery = searchTerm.trim().toLowerCase();
     const matchesSearch = (...values: Array<string | number | undefined>) => {
         if (!searchQuery) return true;
@@ -1852,6 +1882,13 @@ const VisualEditor: React.FC = () => {
                                     </div>
                                     <div className="form-group full-span">
                                         <label>ŞƏKİL</label>
+                                        <div style={{ width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {newsForm.img ? (
+                                                <img src={newsForm.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <span style={{ color: '#94a3b8', fontSize: '12px' }}>Şəkil seçilməyib</span>
+                                            )}
+                                        </div>
                                         <div className="input-row">
                                             <input
                                                 type="text"
@@ -1877,7 +1914,7 @@ const VisualEditor: React.FC = () => {
                                         <label>MƏZMUN</label>
                                         <QuillEditor
                                             id="news-full-desc"
-                                            value={newsForm.description || ''}
+                                            value={bbcodeToHtmlForEditor(newsForm.description || '')}
                                             onChange={(val: string) => handleNewsChange('description', val, newsForm.id)}
                                         />
                                     </div>
@@ -1990,6 +2027,13 @@ const VisualEditor: React.FC = () => {
                                     </div>
                                     <div className="form-group full-span">
                                         <label>ŞƏKİL</label>
+                                        <div style={{ width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {eventForm.img ? (
+                                                <img src={eventForm.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <span style={{ color: '#94a3b8', fontSize: '12px' }}>Şəkil seçilməyib</span>
+                                            )}
+                                        </div>
                                         <div className="input-row">
                                             <input
                                                 type="text"
@@ -2015,7 +2059,7 @@ const VisualEditor: React.FC = () => {
                                         <label>TƏSVİR</label>
                                         <QuillEditor
                                             id="event-full-desc"
-                                            value={eventForm.description || ''}
+                                            value={bbcodeToHtmlForEditor(eventForm.description || '')}
                                             onChange={(val: string) => handleEventChange('description', val, eventForm.id)}
                                         />
                                     </div>
@@ -2056,7 +2100,7 @@ const VisualEditor: React.FC = () => {
                                         <label>QAYDALAR</label>
                                         <QuillEditor
                                             id="event-full-rules"
-                                            value={eventForm.rules || ''}
+                                            value={bbcodeToHtmlForEditor(eventForm.rules || '')}
                                             onChange={(val: string) => handleEventChange('rules', val, eventForm.id)}
                                         />
                                     </div>
@@ -2610,18 +2654,41 @@ const VisualEditor: React.FC = () => {
                                                     const canEditValue = canEditSectionField(section, 'value');
                                                     const canEditUrl = canEditSectionField(section, 'url');
                                                     const hasUrl = !!section.url?.trim();
+                                                    const iconField = isIconField(section);
                                                     return (
                                                         <div key={`${page.id}-${section.id}`} className="field-item-wrapper" style={{ position: 'relative', background: '#fcfcfd', padding: '1rem', borderRadius: '12px', border: '1px solid #f0f0f2' }}>
                                                             <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, marginBottom: '6px' }}>
                                                                 {sectionKey ? humanizeKey(sectionKey) : section.label}
                                                             </div>
-                                                            <textarea
-                                                                rows={3}
-                                                                value={section.value}
-                                                                disabled={!canEditValue}
-                                                                onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
-                                                                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: 1.4, resize: 'vertical' }}
-                                                            />
+                                                            {iconField ? (
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px' }}>
+                                                                    <select
+                                                                        value={section.value || ''}
+                                                                        disabled={!canEditValue}
+                                                                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
+                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                                                                    >
+                                                                        {ICON_PRESETS.map((opt) => (
+                                                                            <option key={opt} value={opt}>{opt}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={section.value || ''}
+                                                                        disabled={!canEditValue}
+                                                                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
+                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <textarea
+                                                                    rows={3}
+                                                                    value={section.value}
+                                                                    disabled={!canEditValue}
+                                                                    onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
+                                                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: 1.4, resize: 'vertical' }}
+                                                                />
+                                                            )}
 
                                                             {hasUrl && (
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.75rem' }}>
@@ -2983,6 +3050,7 @@ const VisualEditor: React.FC = () => {
                                                     const realIndex = realSections.findIndex(s => s.id === section.id);
                                                     const canMoveUp = realIndex > 0;
                                                     const canMoveDown = realIndex >= 0 && realIndex < realSections.length - 1;
+                                                    const iconField = isIconField(section);
 
                                                     return (
                                                         <div key={section.id} className="field-item-wrapper" style={{ background: editable ? '#fcfcfd' : '#f8fafc', padding: '1.25rem', borderRadius: '14px', border: editable ? '1px solid #e5e7eb' : '1px dashed #cbd5e1' }}>
@@ -3003,7 +3071,27 @@ const VisualEditor: React.FC = () => {
                                                                     Sıra: {visibleIndex + 1}
                                                                 </span>
                                                             </div>
-                                                            {key || !shouldUseRichEditor(section) ? (
+                                                            {iconField ? (
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px' }}>
+                                                                    <select
+                                                                        value={section.value || ''}
+                                                                        onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'value', e.target.value)}
+                                                                        disabled={!editableValue}
+                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                                                                    >
+                                                                        {ICON_PRESETS.map((opt) => (
+                                                                            <option key={opt} value={opt}>{opt}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={section.value || ''}
+                                                                        onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'value', e.target.value)}
+                                                                        disabled={!editableValue}
+                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                                                                    />
+                                                                </div>
+                                                            ) : key || !shouldUseRichEditor(section) ? (
                                                                 <textarea
                                                                     value={section.value || ''}
                                                                     onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'value', e.target.value)}
@@ -3014,7 +3102,7 @@ const VisualEditor: React.FC = () => {
                                                             ) : (
                                                                 <QuillEditor
                                                                     id={`editor-${section.id}`}
-                                                                    value={section.value || ''}
+                                                                    value={bbcodeToHtmlForEditor(section.value || '')}
                                                                     onChange={(val: string) => handleSectionChange(selectedPageIndex, section.id, 'value', val)}
                                                                     readOnly={!editableValue}
                                                                 />
