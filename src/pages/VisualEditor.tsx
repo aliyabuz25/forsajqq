@@ -203,7 +203,9 @@ const isSectionVisibleInAdmin = (_section: Section) => {
 const shouldSkipSectionInEditor = (section: Section) => {
     const key = extractSectionKey(section);
     // Hide token-like keys such as VIEW_ALL_BTN in admin edit UI.
-    return !!key && key.includes('_');
+    if (key && key.includes('_')) return true;
+    if (!key && looksLikeKeyToken(section.value)) return true;
+    return false;
 };
 
 const PARTNER_KEY_REGEX = /^PARTNER_(\d+)_(NAME|TAG|ICON|USE_IMAGE|IMAGE_ID)$/;
@@ -1577,7 +1579,6 @@ const VisualEditor: React.FC = () => {
         if (shouldSkipSectionInEditor(s)) return false;
         if (currentPage?.id === 'about' && isStatSectionId(s.id)) return false;
         if (currentPage?.id === 'partners' && (PARTNER_KEY_REGEX.test(s.id) || s.id === 'SECTION_TITLE')) return false;
-        if (!extractSectionKey(s) && looksLikeKeyToken(s.value)) return false;
         return !searchTerm ||
             s.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.value.toLowerCase().includes(searchTerm.toLowerCase());
