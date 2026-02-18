@@ -67,14 +67,14 @@ const ContactPage: React.FC = () => {
               </div>
 
               <h3 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter mb-2 leading-none text-white">
-                {getGeneralText('CONTACT_ADDRESS_1') || getText('ADDRESS_LINE_1', 'AZADLIQ 102, BAKI')}
+                {getText('ADDRESS_LINE_1', getGeneralText('CONTACT_ADDRESS_1') || 'AZADLIQ 102, BAKI')}
               </h3>
               <p className="text-[#FF4D00] font-black italic text-[10px] uppercase tracking-[0.3em] pb-8 border-b border-white/5">
-                {getGeneralText('CONTACT_ADDRESS_2') || getText('ADDRESS_LINE_2', 'AZƏRBAYCAN // SECTOR_01')}
+                {getText('ADDRESS_LINE_2', getGeneralText('CONTACT_ADDRESS_2') || 'AZƏRBAYCAN // SECTOR_01')}
               </p>
 
               <div className="mt-8 flex justify-between items-center text-[10px] font-black italic uppercase tracking-widest">
-                <span className="flex items-center gap-3 text-gray-500"><Clock size={14} className="text-[#FF4D00]" /> {getGeneralText('CONTACT_HOURS') || getText('WORK_HOURS', '09:00 - 18:00')}</span>
+                <span className="flex items-center gap-3 text-gray-500"><Clock size={14} className="text-[#FF4D00]" /> {getText('WORK_HOURS', getGeneralText('CONTACT_HOURS') || '09:00 - 18:00')}</span>
                 <span className="text-[#25D366] flex items-center gap-2 font-black"><span className="w-2 h-2 bg-[#25D366] rounded-full animate-pulse"></span> {onlineLabel}</span>
               </div>
             </div>
@@ -86,7 +86,7 @@ const ContactPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-600 font-black italic text-[8px] uppercase tracking-[0.4em] mb-1">{getText('PHONE_LABEL', 'ƏLAQƏ NÖMRƏSİ')}</p>
-                  <p className="text-2xl font-black italic uppercase tracking-tighter text-white">{getGeneralText('CONTACT_PHONE') || getText('PHONE_NUMBER', '+994 50 123 45 67')}</p>
+                  <p className="text-2xl font-black italic uppercase tracking-tighter text-white">{getText('PHONE_NUMBER', getGeneralText('CONTACT_PHONE') || '+994 50 123 45 67')}</p>
                 </div>
               </div>
 
@@ -96,7 +96,7 @@ const ContactPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-600 font-black italic text-[8px] uppercase tracking-[0.4em] mb-1">{getText('EMAIL_LABEL', 'E-POÇT ÜNVANI')}</p>
-                  <p className="text-xl font-black italic uppercase tracking-tighter text-white">{getGeneralText('CONTACT_EMAIL') || getText('EMAIL_Address', 'PROTOCOL@FORSAJ.AZ')}</p>
+                  <p className="text-xl font-black italic uppercase tracking-tighter text-white">{getText('EMAIL_Address', getGeneralText('CONTACT_EMAIL') || 'PROTOCOL@FORSAJ.AZ')}</p>
                 </div>
               </div>
 
@@ -121,19 +121,19 @@ const ContactPage: React.FC = () => {
             <DepartmentCard
               title={getText('DEPT_HQ_TITLE', 'BAŞ OFİS')}
               desc={getText('DEPT_HQ_DESC', 'ÜMUMİ SORĞULAR VƏ İDARƏETMƏ')}
-              email={getGeneralText('DEPT_HQ_EMAIL') || getText('DEPT_HQ_EMAIL', 'HQ@FORSAJ.AZ')}
+              email={getText('DEPT_HQ_EMAIL', getGeneralText('DEPT_HQ_EMAIL') || 'HQ@FORSAJ.AZ')}
               icon={<Send size={24} />}
             />
             <DepartmentCard
               title={getText('DEPT_PR_TITLE', 'MEDİA VƏ PR')}
               desc={getText('DEPT_PR_DESC', 'MƏTBUAT VƏ ƏMƏKDAŞLIQ')}
-              email={getGeneralText('DEPT_PR_EMAIL') || getText('DEPT_PR_EMAIL', 'PR@FORSAJ.AZ')}
+              email={getText('DEPT_PR_EMAIL', getGeneralText('DEPT_PR_EMAIL') || 'PR@FORSAJ.AZ')}
               icon={<Youtube size={24} />}
             />
             <DepartmentCard
               title={getText('DEPT_TECH_TITLE', 'TEXNİKİ DƏSTƏK')}
               desc={getText('DEPT_TECH_DESC', 'PİLOTLAR ÜÇÜN TEXNİKİ YARDIM')}
-              email={getGeneralText('DEPT_TECH_EMAIL') || getText('DEPT_TECH_EMAIL', 'TECH@FORSAJ.AZ')}
+              email={getText('DEPT_TECH_EMAIL', getGeneralText('DEPT_TECH_EMAIL') || 'TECH@FORSAJ.AZ')}
               icon={<Info size={24} />}
             />
           </div>

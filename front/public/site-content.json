@@ -1464,6 +1464,294 @@
         "type": "text",
         "label": "BTN_DOWNLOAD_PDF",
         "value": "BTN_DOWNLOAD_PDF"
+      },
+      {
+        "id": "RULE_TAB_1_ID",
+        "type": "text",
+        "label": "Qayda Sekmesi 1 ID",
+        "value": "pilot"
+      },
+      {
+        "id": "RULE_TAB_1_TITLE",
+        "type": "text",
+        "label": "Qayda Sekmesi 1 Basliq",
+        "value": "PİLOT PROTOKOLU"
+      },
+      {
+        "id": "RULE_TAB_1_ICON",
+        "type": "text",
+        "label": "Qayda Sekmesi 1 Ikon",
+        "value": "Info"
+      },
+      {
+        "id": "RULE_TAB_1_DOC_NAME",
+        "type": "text",
+        "label": "Sekme 1 Sened Adi",
+        "value": "PILOT_PROTOKOLU.PDF"
+      },
+      {
+        "id": "RULE_TAB_1_DOC_BUTTON",
+        "type": "text",
+        "label": "Sekme 1 Sened Duymesi",
+        "value": "PDF YUKLE"
+      },
+      {
+        "id": "RULE_TAB_1_DOC_URL",
+        "type": "text",
+        "label": "Sekme 1 Sened Linki",
+        "value": ""
+      },
+      {
+        "id": "RULE_TAB_1_ITEM_1_TITLE",
+        "type": "text",
+        "label": "Sekme 1 Madde 1 Basliq",
+        "value": "İSTİFADƏÇİ ÖHDƏLİKLƏRİ"
+      },
+      {
+        "id": "RULE_TAB_1_ITEM_1_DESC",
+        "type": "text",
+        "label": "Sekme 1 Madde 1 Tesvir",
+        "value": "HƏR BİR İŞTİRAKÇI FEDERASİYANIN MÜƏYYƏN ETDİYİ BÜTÜN TEXNİKİ VƏ ETİK NORMALARI QEYD-ŞƏRTSİZ QƏBUL EDİR."
+      },
+      {
+        "id": "RULE_TAB_1_ITEM_2_TITLE",
+        "type": "text",
+        "label": "Sekme 1 Madde 2 Basliq",
+        "value": "DİSKVALİFİKASİYA"
+      },
+      {
+        "id": "RULE_TAB_1_ITEM_2_DESC",
+        "type": "text",
+        "label": "Sekme 1 Madde 2 Tesvir",
+        "value": "PROTOKOLDAN KƏNARA ÇIXMAQ VƏ YA HAKİM QƏRARLARINA ETİRAZ ETMƏK DƏRHAL DİSKVALİFİKASİYA İLƏ NƏTİCƏLƏNƏ BİLƏR."
+      },
+      {
+        "id": "RULE_TAB_1_ITEM_3_TITLE",
+        "type": "text",
+        "label": "Sekme 1 Madde 3 Basliq",
+        "value": "TEXNİKİ TƏLƏBLƏR"
+      },
+      {
+        "id": "RULE_TAB_1_ITEM_3_DESC",
+        "type": "text",
+        "label": "Sekme 1 Madde 3 Tesvir",
+        "value": "BÜTÜN AVADANLIQLAR YARIŞDAN 24 SAAT ƏVVƏL TEXNİKİ KOMİSSİYA TƏRƏFİNDƏN YOXLANILMALI VƏ TƏHLÜKƏSİZLİK SERTİFİKATI İLƏ TƏMİN EDİLMƏLİDİR."
+      },
+      {
+        "id": "RULE_TAB_2_ID",
+        "type": "text",
+        "label": "Qayda Sekmesi 2 ID",
+        "value": "technical"
+      },
+      {
+        "id": "RULE_TAB_2_TITLE",
+        "type": "text",
+        "label": "Qayda Sekmesi 2 Basliq",
+        "value": "TEXNİKİ NORMARTİVLƏR"
+      },
+      {
+        "id": "RULE_TAB_2_ICON",
+        "type": "text",
+        "label": "Qayda Sekmesi 2 Ikon",
+        "value": "Settings"
+      },
+      {
+        "id": "RULE_TAB_2_DOC_NAME",
+        "type": "text",
+        "label": "Sekme 2 Sened Adi",
+        "value": "TECHNICAL_PROTOKOLU.PDF"
+      },
+      {
+        "id": "RULE_TAB_2_DOC_BUTTON",
+        "type": "text",
+        "label": "Sekme 2 Sened Duymesi",
+        "value": "PDF YUKLE"
+      },
+      {
+        "id": "RULE_TAB_2_DOC_URL",
+        "type": "text",
+        "label": "Sekme 2 Sened Linki",
+        "value": ""
+      },
+      {
+        "id": "RULE_TAB_2_ITEM_1_TITLE",
+        "type": "text",
+        "label": "Sekme 2 Madde 1 Basliq",
+        "value": "TƏKƏR ÖLÇÜLƏRİ"
+      },
+      {
+        "id": "RULE_TAB_2_ITEM_1_DESC",
+        "type": "text",
+        "label": "Sekme 2 Madde 1 Tesvir",
+        "value": "PRO CLASS ÜÇÜN MAKSİMUM TƏKƏR ÖLÇÜSÜ 37 DÜYM, AMATEUR CLASS ÜÇÜN İSƏ 33 DÜYM OLARAQ MÜƏYYƏN EDİLMİŞDİR."
+      },
+      {
+        "id": "RULE_TAB_2_ITEM_2_TITLE",
+        "type": "text",
+        "label": "Sekme 2 Madde 2 Basliq",
+        "value": "MÜHƏRRİK GÜCÜ"
+      },
+      {
+        "id": "RULE_TAB_2_ITEM_2_DESC",
+        "type": "text",
+        "label": "Sekme 2 Madde 2 Tesvir",
+        "value": "MÜHƏRRİK ÜZƏRİNDƏ APARILAN MODİFİKASİYALAR KATEQORİYA ÜZRƏ LİMİTLƏRİ AŞMAMALIDIR. TURBO SİSTEMLƏRİ YALNIZ XÜSUSİ KLASLARDA İCAZƏLİDİR."
+      },
+      {
+        "id": "RULE_TAB_2_ITEM_3_TITLE",
+        "type": "text",
+        "label": "Sekme 2 Madde 3 Basliq",
+        "value": "ASQI SİSTEMİ"
+      },
+      {
+        "id": "RULE_TAB_2_ITEM_3_DESC",
+        "type": "text",
+        "label": "Sekme 2 Madde 3 Tesvir",
+        "value": "AVTOMOBILIN KLIRENSI VE ASQI ARTIKULYASIYASI TEHLUKESIZLIK STANDARTLARINA UYGUN OLMALIDIR."
+      },
+      {
+        "id": "RULE_TAB_3_ID",
+        "type": "text",
+        "label": "Qayda Sekmesi 3 ID",
+        "value": "safety"
+      },
+      {
+        "id": "RULE_TAB_3_TITLE",
+        "type": "text",
+        "label": "Qayda Sekmesi 3 Basliq",
+        "value": "TƏHLÜKƏSİZLİK QAYDALARI"
+      },
+      {
+        "id": "RULE_TAB_3_ICON",
+        "type": "text",
+        "label": "Qayda Sekmesi 3 Ikon",
+        "value": "ShieldAlert"
+      },
+      {
+        "id": "RULE_TAB_3_DOC_NAME",
+        "type": "text",
+        "label": "Sekme 3 Sened Adi",
+        "value": "SAFETY_PROTOKOLU.PDF"
+      },
+      {
+        "id": "RULE_TAB_3_DOC_BUTTON",
+        "type": "text",
+        "label": "Sekme 3 Sened Duymesi",
+        "value": "PDF YUKLE"
+      },
+      {
+        "id": "RULE_TAB_3_DOC_URL",
+        "type": "text",
+        "label": "Sekme 3 Sened Linki",
+        "value": ""
+      },
+      {
+        "id": "RULE_TAB_3_ITEM_1_TITLE",
+        "type": "text",
+        "label": "Sekme 3 Madde 1 Basliq",
+        "value": "KARKAS TƏLƏBİ"
+      },
+      {
+        "id": "RULE_TAB_3_ITEM_1_DESC",
+        "type": "text",
+        "label": "Sekme 3 Madde 1 Tesvir",
+        "value": "BUTUN ACIQ VE YA MODIFIKASIYA OLUNMUS AVTOMOBILLERDE FIA STANDARTLARINA UYGUN TEHLUKESIZLIK KARKASI MECBURIDIR."
+      },
+      {
+        "id": "RULE_TAB_3_ITEM_2_TITLE",
+        "type": "text",
+        "label": "Sekme 3 Madde 2 Basliq",
+        "value": "YANĞIN SÖNDÜRMƏ"
+      },
+      {
+        "id": "RULE_TAB_3_ITEM_2_DESC",
+        "type": "text",
+        "label": "Sekme 3 Madde 2 Tesvir",
+        "value": "HƏR BİR AVTOMOBİLDƏ ƏN AZI 2 KİLOQRAMLIQ, ASAN ƏLÇATAN YERDƏ YERLƏŞƏN YANĞINSÖNDÜRƏN BALON OLMALIDIR."
+      },
+      {
+        "id": "RULE_TAB_3_ITEM_3_TITLE",
+        "type": "text",
+        "label": "Sekme 3 Madde 3 Basliq",
+        "value": "KƏMƏR VƏ DƏBİLQƏ"
+      },
+      {
+        "id": "RULE_TAB_3_ITEM_3_DESC",
+        "type": "text",
+        "label": "Sekme 3 Madde 3 Tesvir",
+        "value": "5 NOQTELI TEHLUKESIZLIK KEMERLERI VE SERTIFIKATLI KASKALARIN ISTIFADESI BUTUN MERHELELERDE MECBURIDIR."
+      },
+      {
+        "id": "RULE_TAB_4_ID",
+        "type": "text",
+        "label": "Qayda Sekmesi 4 ID",
+        "value": "eco"
+      },
+      {
+        "id": "RULE_TAB_4_TITLE",
+        "type": "text",
+        "label": "Qayda Sekmesi 4 Basliq",
+        "value": "EKOLOJİ MƏSULİYYƏT"
+      },
+      {
+        "id": "RULE_TAB_4_ICON",
+        "type": "text",
+        "label": "Qayda Sekmesi 4 Ikon",
+        "value": "Leaf"
+      },
+      {
+        "id": "RULE_TAB_4_DOC_NAME",
+        "type": "text",
+        "label": "Sekme 4 Sened Adi",
+        "value": "ECO_PROTOKOLU.PDF"
+      },
+      {
+        "id": "RULE_TAB_4_DOC_BUTTON",
+        "type": "text",
+        "label": "Sekme 4 Sened Duymesi",
+        "value": "PDF YUKLE"
+      },
+      {
+        "id": "RULE_TAB_4_DOC_URL",
+        "type": "text",
+        "label": "Sekme 4 Sened Linki",
+        "value": ""
+      },
+      {
+        "id": "RULE_TAB_4_ITEM_1_TITLE",
+        "type": "text",
+        "label": "Sekme 4 Madde 1 Basliq",
+        "value": "TULLANTILARIN İDARƏ EDİLMƏSİ"
+      },
+      {
+        "id": "RULE_TAB_4_ITEM_1_DESC",
+        "type": "text",
+        "label": "Sekme 4 Madde 1 Tesvir",
+        "value": "YARIS ERAZISINDE VE TRASDA HER HANSI BIR TULLANTININ ATILMASI QETI QADAGANDIR. ISTIRAKCILAR LEAVE NO TRACE PRINSIPINE EMEL ETMELIDIR."
+      },
+      {
+        "id": "RULE_TAB_4_ITEM_2_TITLE",
+        "type": "text",
+        "label": "Sekme 4 Madde 2 Basliq",
+        "value": "MAYE SIZMALARI"
+      },
+      {
+        "id": "RULE_TAB_4_ITEM_2_DESC",
+        "type": "text",
+        "label": "Sekme 4 Madde 2 Tesvir",
+        "value": "AVTOMOBİLDƏN YAĞ VƏ YA SOYUDUCU MAYE SIZMASI OLDUĞU TƏQDİRDƏ PİLOT DƏRHAL DAYANMALI VƏ ƏRAZİNİN ÇİRKLƏNMƏSİNİN QARŞISINI ALMALIDIR."
+      },
+      {
+        "id": "RULE_TAB_4_ITEM_3_TITLE",
+        "type": "text",
+        "label": "Sekme 4 Madde 3 Basliq",
+        "value": "MARŞRUTDAN KƏNARA ÇIXMAMAQ"
+      },
+      {
+        "id": "RULE_TAB_4_ITEM_3_DESC",
+        "type": "text",
+        "label": "Sekme 4 Madde 3 Tesvir",
+        "value": "TƏBİİ ÖRTÜYÜ QORUMAQ MƏQSƏDİ İLƏ MÜƏYYƏN OLUNMUŞ TRASDANKƏNAR SÜRÜŞLƏR VƏ YA YAŞIL SAHƏLƏRƏ ZƏRƏR VERMƏK QADAĞANDIR."
       }
     ],
     "images": []

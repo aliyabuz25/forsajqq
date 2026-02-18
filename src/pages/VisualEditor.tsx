@@ -600,11 +600,44 @@ const VisualEditor: React.FC = () => {
                 };
                 const ensureContactDefaults = (page: PageContent) => {
                     ensurePageSectionDefaults(page, [
+                        { id: 'PAGE_TITLE', label: 'Səhifə Başlığı', value: 'ƏLAQƏ' },
+                        { id: 'PAGE_SUBTITLE', label: 'Səhifə Alt Başlığı', value: 'GET IN TOUCH // CONTACT CENTER' },
+                        { id: 'OFFICE_LABEL', label: 'Ofis Bölmə Başlığı', value: 'BAŞ OFİS' },
+                        { id: 'ADDRESS_LINE_1', label: 'Ünvan Sətir 1', value: 'AZADLIQ 102, BAKI' },
+                        { id: 'ADDRESS_LINE_2', label: 'Ünvan Sətir 2', value: 'AZƏRBAYCAN // SECTOR_01' },
+                        { id: 'WORK_HOURS', label: 'İş Saatı', value: '09:00 - 18:00' },
                         { id: 'ONLINE_STATUS_LABEL', label: 'Onlayn Status Mətni', value: 'ONLINE' },
+                        { id: 'PHONE_LABEL', label: 'Telefon Başlığı', value: 'ƏLAQƏ NÖMRƏSİ' },
+                        { id: 'PHONE_NUMBER', label: 'Telefon Nömrəsi', value: '+994 50 123 45 67' },
+                        { id: 'EMAIL_LABEL', label: 'E-poçt Başlığı', value: 'E-POÇT ÜNVANI' },
+                        { id: 'EMAIL_Address', label: 'Əsas E-poçt Ünvanı', value: 'PROTOCOL@FORSAJ.AZ' },
+                        { id: 'DEPT_HQ_TITLE', label: 'Departament 1 Başlıq', value: 'BAŞ OFİS' },
+                        { id: 'DEPT_HQ_DESC', label: 'Departament 1 Təsvir', value: 'ÜMUMİ SORĞULAR VƏ İDARƏETMƏ' },
+                        { id: 'DEPT_HQ_EMAIL', label: 'Departament 1 E-poçt', value: 'HQ@FORSAJ.AZ' },
+                        { id: 'DEPT_PR_TITLE', label: 'Departament 2 Başlıq', value: 'MEDİA VƏ PR' },
+                        { id: 'DEPT_PR_DESC', label: 'Departament 2 Təsvir', value: 'MƏTBUAT VƏ ƏMƏKDAŞLIQ' },
+                        { id: 'DEPT_PR_EMAIL', label: 'Departament 2 E-poçt', value: 'PR@FORSAJ.AZ' },
+                        { id: 'DEPT_TECH_TITLE', label: 'Departament 3 Başlıq', value: 'TEXNİKİ DƏSTƏK' },
+                        { id: 'DEPT_TECH_DESC', label: 'Departament 3 Təsvir', value: 'PİLOTLAR ÜÇÜN TEXNİKİ YARDIM' },
+                        { id: 'DEPT_TECH_EMAIL', label: 'Departament 3 E-poçt', value: 'TECH@FORSAJ.AZ' },
+                        { id: 'FORM_TITLE', label: 'Form Başlığı', value: 'MÜRACİƏT FORMU' },
                         { id: 'FORM_STATUS_LABEL', label: 'Form Status Mətni', value: 'STATUS: ONLINE' },
+                        { id: 'FIELD_NAME_LABEL', label: 'Ad Soyad Label', value: 'AD VƏ SOYAD' },
+                        { id: 'FIELD_NAME_PLACEHOLDER', label: 'Ad Soyad Placeholder', value: 'AD SOYAD DAXİL EDİN' },
+                        { id: 'FIELD_CONTACT_LABEL', label: 'Əlaqə Label', value: 'ƏLAQƏ VASİTƏSİ' },
+                        { id: 'FIELD_CONTACT_PLACEHOLDER', label: 'Əlaqə Placeholder', value: 'TELEFON VƏ YA EMAIL' },
+                        { id: 'FIELD_TOPIC_LABEL', label: 'Müraciət İstiqaməti Label', value: 'MÜRACİƏT İSTİQAMƏTİ' },
+                        { id: 'TOPIC_GENERAL', label: 'Mövzu Seçimi 1', value: 'ÜMUMİ SORĞU' },
+                        { id: 'TOPIC_PILOT', label: 'Mövzu Seçimi 2', value: 'PİLOT QEYDİYYATI' },
+                        { id: 'TOPIC_TECH', label: 'Mövzu Seçimi 3', value: 'TEXNİKİ YARDIM' },
+                        { id: 'FIELD_MESSAGE_LABEL', label: 'Mesaj Label', value: 'MESAJINIZ' },
+                        { id: 'FIELD_MESSAGE_PLACEHOLDER', label: 'Mesaj Placeholder', value: 'BURADA YAZIN...' },
+                        { id: 'BTN_SEND', label: 'Form Göndər Düyməsi', value: 'MESAJI GÖNDƏR' },
                         { id: 'FORM_TOAST_REQUIRED', label: 'Form Boş Sahə Xəbərdarlığı', value: 'Zəhmət olmasa bütün sahələri doldurun.' },
                         { id: 'FORM_TOAST_SUCCESS', label: 'Form Uğurlu Göndəriş Mesajı', value: 'Müraciətiniz uğurla göndərildi!' },
-                        { id: 'FORM_TOAST_ERROR', label: 'Form Xəta Mesajı', value: 'Gondərilmə zamanı xəta baş verdi.' }
+                        { id: 'FORM_TOAST_ERROR', label: 'Form Xəta Mesajı', value: 'Gondərilmə zamanı xəta baş verdi.' },
+                        { id: 'FOOTER_NEWSLETTER_TITLE', label: 'Abunə Başlığı', value: 'XƏBƏRDAR OL' },
+                        { id: 'FOOTER_NEWSLETTER_DESC', label: 'Abunə Təsviri', value: 'Yarış təqvimi və xəbərlərdən anında xəbərdar olmaq üçün abunə olun.' }
                     ]);
                 };
                 const ensureEventsDefaults = (page: PageContent) => {
@@ -655,10 +688,6 @@ const VisualEditor: React.FC = () => {
                 };
                 const ensureRulesDefaults = (page: PageContent) => {
                     const sections = page.sections || [];
-                    if (sections.some((s) => RULE_TAB_SECTION_REGEX.test(s.id))) {
-                        page.sections = sections;
-                        return;
-                    }
 
                     const pickLegacyValue = (key: string, fallback: string) =>
                         (sections.find((s) => s.id === key)?.value || fallback).trim() || fallback;
@@ -727,7 +756,9 @@ const VisualEditor: React.FC = () => {
                         });
                     });
 
-                    page.sections = [...sections, ...dynamicSections];
+                    const existingIds = new Set(sections.map((section) => section.id));
+                    const missingDynamicSections = dynamicSections.filter((section) => !existingIds.has(section.id));
+                    page.sections = [...sections, ...missingDynamicSections];
                 };
 
                 defaultIds.forEach(id => {
