@@ -117,6 +117,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
   const [activeTab, setActiveTab] = useState<'planned' | 'past'>('planned');
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [regStep, setRegStep] = useState<'select' | 'pilot' | null>(null);
+  const [selectedClub, setSelectedClub] = useState('');
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -167,7 +168,10 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
       <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
         <div className="relative w-full max-w-4xl bg-[#0A0A0A] border border-white/5 p-8 md:p-16 min-h-[600px] flex flex-col justify-center shadow-[0_0_100px_rgba(255,77,0,0.1)]">
           <button
-            onClick={() => setRegStep(null)}
+            onClick={() => {
+              setRegStep(null);
+              setSelectedClub('');
+            }}
             className="absolute top-8 right-8 text-gray-600 hover:text-white transition-colors"
           >
             <X size={32} />
@@ -182,7 +186,10 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div
-                  onClick={() => setRegStep('pilot')}
+                  onClick={() => {
+                    setSelectedClub((prev) => (prev && clubs.includes(prev) ? prev : (clubs[0] || '')));
+                    setRegStep('pilot');
+                  }}
                   className="group cursor-pointer bg-black border border-white/5 hover:border-[#FF4D00] transition-all p-12 flex flex-col items-center justify-center min-h-[300px] shadow-2xl"
                 >
                   <div className="bg-[#FF4D00] p-6 mb-8 transform -skew-x-12 group-hover:scale-110 group-hover:bg-white transition-all shadow-[0_0_20px_rgba(255,77,0,0.3)]">
@@ -227,7 +234,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
                 const car = String(fd.get('car') || '').trim();
                 const tire = String(fd.get('tire') || '').trim();
                 const engine = String(fd.get('engine') || '').trim();
-                const club = String(fd.get('club') || '').trim();
+                const club = selectedClub.trim() || String(fd.get('club') || '').trim();
 
                 if (!name || !contact || !car || !tire || !engine || !club) {
                   toast.error(requiredFieldsToast);
@@ -256,6 +263,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
                   if (res.ok) {
                     toast.success(submitSuccessToast);
                     setRegStep(null);
+                    setSelectedClub('');
                   } else {
                     const err = await res.json().catch(() => ({}));
                     throw new Error(err?.error || 'request_failed');
@@ -289,9 +297,15 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
                 <div className="space-y-4">
                   <label className="text-gray-600 font-black italic text-[10px] uppercase tracking-widest">{getText('FIELD_CLUB', 'TƏMSİL ETDİYİ KLUB')}</label>
                   <div className="relative">
-                    <select name="club" required className="w-full bg-black border border-white/5 text-white p-5 font-black italic text-sm focus:ring-1 focus:ring-[#FF4D00] outline-none uppercase appearance-none cursor-pointer">
+                    <select
+                      name="club"
+                      required
+                      value={selectedClub || clubs[0] || ''}
+                      onChange={(e) => setSelectedClub(e.target.value)}
+                      className="w-full bg-black border border-white/5 text-white p-5 font-black italic text-sm focus:ring-1 focus:ring-[#FF4D00] outline-none uppercase appearance-none cursor-pointer"
+                    >
                       {clubs.map((club) => (
-                        <option key={club} value={club.toLowerCase()}>{club.toUpperCase()}</option>
+                        <option key={club} value={club}>{club.toUpperCase()}</option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-[#FF4D00] pointer-events-none" size={20} />

@@ -212,6 +212,9 @@ const PAGE_EDIT_HINTS: Record<string, string> = {
     hero: 'Ana səhifənin ilk ekranında görünən başlıq, alt başlıq və düymələr.',
     marquee: 'Ana səhifədə sürüşən məlumat zolağının məzmunu.',
     categoryleaders: 'Ana səhifə liderlər bölməsi başlıq və məlumatları.',
+    nextrace: 'Ana səhifədəki "NÖVBƏTİ YARIŞ" bölməsinin başlıq və CTA mətnləri.',
+    videoarchive: 'Ana səhifədəki "VİDEO ARXİVİ" bölməsinin başlıq və izah mətnləri.',
+    news: 'Ana səhifədəki "SON XƏBƏRLƏR" bölməsinin başlıq və izah mətnləri.',
     partners: 'Ana səhifənin alt hissəsindəki "RƏSMİ TƏRƏFDAŞLARIMIZ" kartları.',
     footer: 'Saytın alt hissəsi (footer) mətnləri, linkləri və əlaqə məlumatları.',
     about: 'Haqqımızda səhifəsindəki əsas başlıqlar, mətnlər və dəyərlər.',
@@ -366,7 +369,7 @@ const canEditSectionField = (section: Section, field: 'value' | 'label' | 'url')
     if (!isSectionBusinessEditable(section)) return false;
 
     const key = extractSectionKey(section);
-    if (key) return field === 'value';
+    if (key) return field !== 'label';
 
     return true;
 };
@@ -499,7 +502,7 @@ const componentLabels: Record<string, string> = {
 };
 
 const TAB_PAGE_GROUPS: Record<string, string[]> = {
-    home: ['navbar', 'hero', 'marquee', 'categoryleaders', 'partners', 'footer'],
+    home: ['navbar', 'hero', 'marquee', 'categoryleaders', 'nextrace', 'videoarchive', 'news', 'partners', 'footer'],
     // About page in frontend reads all content from "about" page id.
     abouttab: ['about'],
     newstab: ['newspage'],

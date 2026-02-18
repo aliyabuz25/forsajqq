@@ -13,13 +13,88 @@ const Hero: React.FC<HeroProps> = ({ onViewChange }) => {
 
   if (isLoading) return <div className="h-[85vh] bg-black animate-pulse"></div>;
 
+  const viewIds = new Set(['home', 'about', 'news', 'events', 'drivers', 'gallery', 'rules', 'contact', 'privacy', 'terms']);
+  const viewAliases: Record<string, string> = {
+    ana: 'home',
+    anasehife: 'home',
+    haqqimizda: 'about',
+    news: 'news',
+    xeberler: 'news',
+    tedbirler: 'events',
+    eventstab: 'events',
+    suruculer: 'drivers',
+    qalereya: 'gallery',
+    qaydalar: 'rules',
+    elaqe: 'contact',
+    privacypolicy: 'privacy',
+    mexfiliksiyaseti: 'privacy',
+    termsofservice: 'terms',
+    xidmetsertleri: 'terms'
+  };
+
+  const normalizeToken = (value: string) => (
+    (value || '')
+      .toLocaleLowerCase('az')
+      .replace(/ə/g, 'e')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ü/g, 'u')
+      .replace(/ğ/g, 'g')
+      .replace(/ş/g, 's')
+      .replace(/ç/g, 'c')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '')
+  );
+
+  const resolveView = (raw: string) => {
+    const token = normalizeToken(raw);
+    if (!token) return null;
+    if (viewIds.has(token)) return token;
+    return viewAliases[token] || null;
+  };
+
   const handleAction = (key: string, defaultView: string) => {
-    const url = getUrl(key, defaultView);
-    if (url.startsWith('http')) {
-      window.open(url, '_blank');
-    } else {
-      onViewChange(url as any);
+    const rawUrl = (getUrl(key, defaultView) || '').trim();
+    const fallbackView = resolveView(defaultView) || defaultView;
+    if (!rawUrl) {
+      onViewChange(fallbackView as any);
+      return;
     }
+
+    if (/^https?:\/\//i.test(rawUrl)) {
+      try {
+        const parsed = new URL(rawUrl);
+        if (parsed.origin !== window.location.origin) {
+          window.open(rawUrl, '_blank');
+          return;
+        }
+
+        const candidates = [
+          parsed.pathname.replace(/^\/+|\/+$/g, ''),
+          parsed.hash.replace(/^#/, ''),
+          parsed.searchParams.get('view') || '',
+          parsed.searchParams.get('tab') || ''
+        ];
+
+        for (const candidate of candidates) {
+          const resolved = resolveView(candidate);
+          if (resolved) {
+            onViewChange(resolved as any);
+            return;
+          }
+        }
+      } catch {
+        window.open(rawUrl, '_blank');
+        return;
+      }
+
+      onViewChange(fallbackView as any);
+      return;
+    }
+
+    const resolved = resolveView(rawUrl) || resolveView(rawUrl.replace(/^\/+/, ''));
+    onViewChange((resolved || fallbackView) as any);
   };
 
   return (
