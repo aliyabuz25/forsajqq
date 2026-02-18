@@ -542,7 +542,6 @@ const resolvePageGroup = (pageParam?: string | null) => {
 const CONTENT_VERSION_KEY = 'forsaj_site_content_version';
 const GROUPED_PAGE_COLLAPSE_KEY = 'forsaj_grouped_page_collapsed_v1';
 const SECTION_COLLAPSE_KEY = 'forsaj_section_collapsed_v1';
-const ADVANCED_EDITOR_MODE_KEY = 'forsaj_editor_advanced_mode_v1';
 const normalizeOrder = (value: number | undefined, fallback: number) =>
     Number.isFinite(value as number) ? (value as number) : fallback;
 
@@ -560,15 +559,7 @@ const VisualEditor: React.FC = () => {
     const [activeImageField, setActiveImageField] = useState<{ pageIdx: number, imgId: string } | null>(null);
     const [newSectionTitle, setNewSectionTitle] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [showAdvancedEditor, setShowAdvancedEditor] = useState<boolean>(() => {
-        try {
-            const raw = localStorage.getItem(ADVANCED_EDITOR_MODE_KEY);
-            if (!raw) return false;
-            return raw === '1' || raw === 'true';
-        } catch {
-            return false;
-        }
-    });
+    const showAdvancedEditor = true;
     const [groupedPageCollapsed, setGroupedPageCollapsed] = useState<Record<string, boolean>>(() => {
         try {
             const raw = localStorage.getItem(GROUPED_PAGE_COLLAPSE_KEY);
@@ -650,9 +641,6 @@ const VisualEditor: React.FC = () => {
     useEffect(() => {
         localStorage.setItem(SECTION_COLLAPSE_KEY, JSON.stringify(sectionCollapsed));
     }, [sectionCollapsed]);
-    useEffect(() => {
-        localStorage.setItem(ADVANCED_EDITOR_MODE_KEY, showAdvancedEditor ? '1' : '0');
-    }, [showAdvancedEditor]);
     const [driverCategories, setDriverCategories] = useState<DriverCategory[]>([]);
     const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
     const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
@@ -3306,6 +3294,12 @@ const VisualEditor: React.FC = () => {
         matchesSearch(item.title, item.url)
     );
 
+    const resetAllCollapsedPanels = () => {
+        setGroupedPageCollapsed({});
+        setSectionCollapsed({});
+        toast.success('Gizlədilən bütün sahələr yenidən açıldı');
+    };
+
     return (
         <div className="visual-editor fade-in">
             <div className="editor-header">
@@ -3327,13 +3321,18 @@ const VisualEditor: React.FC = () => {
 
                     <div className="header-actions">
                         {editorMode === 'extract' && (
+                            <span className="editor-lock-badge" title="Geniş rejim məcburi aktivdir">
+                                Geniş Rejim: Məcburi
+                            </span>
+                        )}
+                        {editorMode === 'extract' && (
                             <button
                                 type="button"
-                                className={`editor-mode-toggle ${showAdvancedEditor ? 'active' : ''}`}
-                                onClick={() => setShowAdvancedEditor((prev) => !prev)}
-                                title={showAdvancedEditor ? 'Sadə görünüşə keç' : 'Geniş görünüşə keç'}
+                                className="editor-secondary-btn"
+                                onClick={resetAllCollapsedPanels}
+                                title="Paneldə gizlədilən bütün bölmələri yenidən göstər"
                             >
-                                {showAdvancedEditor ? 'Geniş Rejim' : 'Sadə Rejim'}
+                                Gizlədilənləri Aç
                             </button>
                         )}
                         <button
@@ -3386,9 +3385,7 @@ const VisualEditor: React.FC = () => {
                 </div>
                 {editorMode === 'extract' && (
                     <div className="editor-view-note">
-                        {showAdvancedEditor
-                            ? 'Geniş rejim aktivdir: texniki ID, sıralama, silmə və gizlətmə alətləri görünür.'
-                            : 'Sadə rejim aktivdir: yalnız əsas mətn və şəkil sahələri göstərilir.'}
+                        Geniş rejim məcburi aktivdir: texniki ID, sıralama, silmə və gizlətmə alətləri hər zaman görünür.
                     </div>
                 )}
             </div>
