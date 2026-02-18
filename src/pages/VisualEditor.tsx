@@ -1588,6 +1588,7 @@ const VisualEditor: React.FC = () => {
 
         page.sections = [...restSections, ...nextSections].map((section, idx) => ({ ...section, order: idx }));
         setPages(newPages);
+        return newPages;
     };
 
     const addRulesTab = (pageIdx: number = selectedPageIndex) => {
@@ -1710,11 +1711,31 @@ const VisualEditor: React.FC = () => {
         });
     };
 
+    const savePagesSilently = async (nextPages: PageContent[]) => {
+        try {
+            const res = await fetch('/api/save-content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(nextPages)
+            });
+            if (res.ok) {
+                localStorage.setItem(CONTENT_VERSION_KEY, Date.now().toString());
+            }
+        } catch (error) {
+            console.error('Silent save failed:', error);
+        }
+    };
+
     const handleRulesTabPdfUpload = async (file: File, rowIdx: number, pageIdx: number = selectedPageIndex) => {
         const url = await uploadPdf(file);
         if (!url) return;
-        updateRulesTabField(rowIdx, 'docName', file.name, pageIdx);
-        updateRulesTabField(rowIdx, 'docUrl', url, pageIdx);
+        const rows = getRulesTabRows(pages[pageIdx]);
+        if (!rows[rowIdx]) return;
+        rows[rowIdx] = { ...rows[rowIdx], docName: file.name, docUrl: url };
+        const nextPages = rewriteRulesTabRows(rows, pageIdx);
+        if (nextPages && editorMode === 'extract') {
+            await savePagesSilently(nextPages);
+        }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, pageIdx: number, imgId: string) => {
@@ -4122,6 +4143,7 @@ const VisualEditor: React.FC = () => {
                                         </div>
                                     )}
 
+                                    {currentPage.id !== 'rulespage' && (
                                     <div className="field-group">
                                         <div className="field-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <label><Type size={16} /> Mətn Sahələri</label>
@@ -4153,6 +4175,7 @@ const VisualEditor: React.FC = () => {
                                             )}
                                         </div>
                                     </div>
+                                    )}
 
                                     <div className="field-group">
                                         <div className="field-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
