@@ -99,6 +99,40 @@ const QUILL_MODULES = {
 
 const ICON_PRESETS = ['Shield', 'Users', 'Leaf', 'Zap', 'Target', 'Globe', 'Star', 'Flag'];
 const RULE_TAB_ICON_PRESETS = ['Info', 'Settings', 'ShieldAlert', 'Leaf', 'FileText'];
+const CONTACT_SECTION_GROUPS: Array<{ title: string; ids: string[] }> = [
+    {
+        title: 'Səhifə və Sistem',
+        ids: ['PAGE_TITLE', 'PAGE_SUBTITLE', 'ONLINE_STATUS_LABEL', 'FORM_TOAST_REQUIRED', 'FORM_TOAST_SUCCESS', 'FORM_TOAST_ERROR']
+    },
+    {
+        title: 'Baş Ofis',
+        ids: ['OFFICE_LABEL', 'ADDRESS_LINE_1', 'ADDRESS_LINE_2', 'WORK_HOURS', 'PHONE_LABEL', 'PHONE_NUMBER', 'EMAIL_LABEL', 'EMAIL_Address']
+    },
+    {
+        title: 'Departamentlər',
+        ids: ['DEPT_HQ_TITLE', 'DEPT_HQ_DESC', 'DEPT_HQ_EMAIL', 'DEPT_PR_TITLE', 'DEPT_PR_DESC', 'DEPT_PR_EMAIL', 'DEPT_TECH_TITLE', 'DEPT_TECH_DESC', 'DEPT_TECH_EMAIL']
+    },
+    {
+        title: 'Form',
+        ids: [
+            'FORM_TITLE',
+            'FORM_STATUS_LABEL',
+            'FORM_METHOD',
+            'FORM_CONTENT_TYPE',
+            'FIELD_NAME_LABEL',
+            'FIELD_NAME_PLACEHOLDER',
+            'FIELD_CONTACT_LABEL',
+            'FIELD_CONTACT_PLACEHOLDER',
+            'FIELD_TOPIC_LABEL',
+            'TOPIC_GENERAL',
+            'TOPIC_PILOT',
+            'TOPIC_TECH',
+            'FIELD_MESSAGE_LABEL',
+            'FIELD_MESSAGE_PLACEHOLDER',
+            'BTN_SEND'
+        ]
+    }
+];
 
 const bbcodeToHtmlForEditor = (raw: string) => {
     if (!raw) return '';
@@ -622,6 +656,8 @@ const VisualEditor: React.FC = () => {
                         { id: 'DEPT_TECH_EMAIL', label: 'Departament 3 E-poçt', value: 'TECH@FORSAJ.AZ' },
                         { id: 'FORM_TITLE', label: 'Form Başlığı', value: 'MÜRACİƏT FORMU' },
                         { id: 'FORM_STATUS_LABEL', label: 'Form Status Mətni', value: 'STATUS: ONLINE' },
+                        { id: 'FORM_METHOD', label: 'Form Method', value: 'POST' },
+                        { id: 'FORM_CONTENT_TYPE', label: 'Form Content-Type', value: 'application/json' },
                         { id: 'FIELD_NAME_LABEL', label: 'Ad Soyad Label', value: 'AD VƏ SOYAD' },
                         { id: 'FIELD_NAME_PLACEHOLDER', label: 'Ad Soyad Placeholder', value: 'AD SOYAD DAXİL EDİN' },
                         { id: 'FIELD_CONTACT_LABEL', label: 'Əlaqə Label', value: 'ƏLAQƏ VASİTƏSİ' },
@@ -2261,6 +2297,145 @@ const VisualEditor: React.FC = () => {
     const isIconField = (section: Section) =>
         section.id.startsWith('val-icon-') ||
         /ikon|icon/i.test(section.label || '');
+
+    const renderTextSectionCard = (section: Section, visibleIndex: number, pageIdx: number = selectedPageIndex, pageContext: PageContent | undefined = currentPage) => {
+        const editable = isSectionBusinessEditable(section);
+        const key = extractSectionKey(section);
+        const editableLabel = canEditSectionField(section, 'label');
+        const editableValue = canEditSectionField(section, 'value');
+        const editableUrl = canEditSectionField(section, 'url');
+        const hasUrlValue = !!(section.url || '').trim();
+        const deletable = canDeleteSection(section);
+        const realSections = pageContext?.sections || [];
+        const realIndex = realSections.findIndex(s => s.id === section.id);
+        const canMoveUp = realIndex > 0;
+        const canMoveDown = realIndex >= 0 && realIndex < realSections.length - 1;
+        const iconField = isIconField(section);
+
+        return (
+            <div key={`${section.id}-${visibleIndex}`} className="field-item-wrapper" style={{ background: editable ? '#fcfcfd' : '#f8fafc', padding: '1.25rem', borderRadius: '14px', border: editable ? '1px solid #e5e7eb' : '1px dashed #cbd5e1' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                    <input
+                        type="text"
+                        value={looksLikeKeyToken(section.label) ? humanizeKey(section.label) : section.label}
+                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'label', e.target.value)}
+                        disabled={!editableLabel}
+                        style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', border: 'none', background: 'none', width: 'auto', padding: 0 }}
+                    />
+                    {key && (
+                        <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', borderRadius: '999px', padding: '3px 8px', fontWeight: 700 }}>
+                            Açar mətn
+                        </span>
+                    )}
+                    <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginLeft: 'auto' }}>
+                        Sıra: {visibleIndex + 1}
+                    </span>
+                </div>
+                {iconField ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px' }}>
+                        <select
+                            value={section.value || ''}
+                            onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
+                            disabled={!editableValue}
+                            style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                        >
+                            {ICON_PRESETS.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                        </select>
+                        <input
+                            type="text"
+                            value={section.value || ''}
+                            onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
+                            disabled={!editableValue}
+                            style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                        />
+                    </div>
+                ) : key || !shouldUseRichEditor(section) ? (
+                    <textarea
+                        value={section.value || ''}
+                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
+                        disabled={!editableValue}
+                        rows={4}
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: '1.4', resize: 'vertical' }}
+                    />
+                ) : (
+                    <QuillEditor
+                        id={`editor-${section.id}`}
+                        value={bbcodeToHtmlForEditor(section.value || '')}
+                        onChange={(val: string) => handleSectionChange(pageIdx, section.id, 'value', val)}
+                        readOnly={!editableValue}
+                    />
+                )}
+                {hasUrlValue && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.75rem' }}>
+                        <Globe size={14} style={{ color: '#94a3b8' }} />
+                        <input
+                            type="text"
+                            value={toAbsoluteUrl(section.url || '')}
+                            onChange={(e) => handleSectionChange(pageIdx, section.id, 'url', e.target.value)}
+                            onBlur={() => normalizeSectionUrl(pageIdx, section.id)}
+                            disabled={!editableUrl}
+                            placeholder="URL (Məs: /about veya https://...)"
+                            style={{ fontSize: '12px', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1 }}
+                        />
+                    </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.9rem' }}>
+                    {!hasUrlValue && editableUrl && (
+                        <button
+                            title="Link əlavə et"
+                            onClick={() => handleSectionChange(pageIdx, section.id, 'url', `${window.location.origin}/`)}
+                            style={{ background: '#fff', border: '1px solid #dbeafe', color: '#2563eb', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
+                        >
+                            <Globe size={12} /> Link əlavə et
+                        </button>
+                    )}
+                    <button
+                        title="Yuxarı daşı"
+                        onClick={() => moveField('text', section.id, 'up')}
+                        disabled={!canMoveUp}
+                        style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveUp ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveUp ? 'pointer' : 'not-allowed', fontSize: '12px' }}
+                    >
+                        <ChevronUp size={12} /> Yuxarı
+                    </button>
+                    <button
+                        title="Aşağı daşı"
+                        onClick={() => moveField('text', section.id, 'down')}
+                        disabled={!canMoveDown}
+                        style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveDown ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveDown ? 'pointer' : 'not-allowed', fontSize: '12px' }}
+                    >
+                        <ChevronDown size={12} /> Aşağı
+                    </button>
+                    {deletable && (
+                        <button
+                            className="field-delete-btn"
+                            onClick={() => removeField('text', section.id)}
+                            style={{ background: '#fff', border: '1px solid #fee2e2', color: '#ef4444', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
+                        >
+                            <Trash2 size={12} /> Sil
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const contactGroupedSections = (() => {
+        if (currentPage?.id !== 'contactpage') return [];
+        const usedIds = new Set<string>();
+        const groups = CONTACT_SECTION_GROUPS.map((group) => {
+            const sections = group.ids
+                .map((id) => displayedSections.find((section) => section.id === id))
+                .filter(Boolean) as Section[];
+            sections.forEach((section) => usedIds.add(section.id));
+            return { title: group.title, sections };
+        }).filter((group) => group.sections.length > 0);
+
+        const extraSections = displayedSections.filter((section) => !usedIds.has(section.id));
+        if (extraSections.length > 0) groups.push({ title: 'Digər Sahələr', sections: extraSections });
+        return groups;
+    })();
 
     const searchQuery = searchTerm.trim().toLowerCase();
     const matchesSearch = (...values: Array<string | number | undefined>) => {
@@ -3907,129 +4082,17 @@ const VisualEditor: React.FC = () => {
                                                 <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>
                                                     Bu səhifədə sorğuya uyğun mətn tapılmadı.
                                                 </div>
-                                            ) : (
-                                                displayedSections.map((section, visibleIndex) => {
-                                                    const editable = isSectionBusinessEditable(section);
-                                                    const key = extractSectionKey(section);
-                                                    const editableLabel = canEditSectionField(section, 'label');
-                                                    const editableValue = canEditSectionField(section, 'value');
-                                                    const editableUrl = canEditSectionField(section, 'url');
-                                                    const hasUrlValue = !!(section.url || '').trim();
-                                                    const deletable = canDeleteSection(section);
-                                                    const realSections = currentPage?.sections || [];
-                                                    const realIndex = realSections.findIndex(s => s.id === section.id);
-                                                    const canMoveUp = realIndex > 0;
-                                                    const canMoveDown = realIndex >= 0 && realIndex < realSections.length - 1;
-                                                    const iconField = isIconField(section);
-
-                                                    return (
-                                                        <div key={section.id} className="field-item-wrapper" style={{ background: editable ? '#fcfcfd' : '#f8fafc', padding: '1.25rem', borderRadius: '14px', border: editable ? '1px solid #e5e7eb' : '1px dashed #cbd5e1' }}>
-                                                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                                                                <input
-                                                                    type="text"
-                                                                    value={looksLikeKeyToken(section.label) ? humanizeKey(section.label) : section.label}
-                                                                    onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'label', e.target.value)}
-                                                                    disabled={!editableLabel}
-                                                                    style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--primary)', border: 'none', background: 'none', width: 'auto', padding: 0 }}
-                                                                />
-                                                                {key && (
-                                                                    <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', borderRadius: '999px', padding: '3px 8px', fontWeight: 700 }}>
-                                                                        Açar mətn
-                                                                    </span>
-                                                                )}
-                                                                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginLeft: 'auto' }}>
-                                                                    Sıra: {visibleIndex + 1}
-                                                                </span>
-                                                            </div>
-                                                            {iconField ? (
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px' }}>
-                                                                    <select
-                                                                        value={section.value || ''}
-                                                                        onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'value', e.target.value)}
-                                                                        disabled={!editableValue}
-                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                                                                    >
-                                                                        {ICON_PRESETS.map((opt) => (
-                                                                            <option key={opt} value={opt}>{opt}</option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <input
-                                                                        type="text"
-                                                                        value={section.value || ''}
-                                                                        onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'value', e.target.value)}
-                                                                        disabled={!editableValue}
-                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                                                                    />
-                                                                </div>
-                                                            ) : key || !shouldUseRichEditor(section) ? (
-                                                                <textarea
-                                                                    value={section.value || ''}
-                                                                    onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'value', e.target.value)}
-                                                                    disabled={!editableValue}
-                                                                    rows={4}
-                                                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: '1.4', resize: 'vertical' }}
-                                                                />
-                                                            ) : (
-                                                                <QuillEditor
-                                                                    id={`editor-${section.id}`}
-                                                                    value={bbcodeToHtmlForEditor(section.value || '')}
-                                                                    onChange={(val: string) => handleSectionChange(selectedPageIndex, section.id, 'value', val)}
-                                                                    readOnly={!editableValue}
-                                                                />
-                                                            )}
-                                                            {hasUrlValue && (
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.75rem' }}>
-                                                                    <Globe size={14} style={{ color: '#94a3b8' }} />
-                                                                    <input
-                                                                        type="text"
-                                                                        value={toAbsoluteUrl(section.url || '')}
-                                                                        onChange={(e) => handleSectionChange(selectedPageIndex, section.id, 'url', e.target.value)}
-                                                                        onBlur={() => normalizeSectionUrl(selectedPageIndex, section.id)}
-                                                                        disabled={!editableUrl}
-                                                                        placeholder="URL (Məs: /about veya https://...)"
-                                                                        style={{ fontSize: '12px', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1 }}
-                                                                    />
-                                                                </div>
-                                                            )}
-                                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.9rem' }}>
-                                                                {!hasUrlValue && editableUrl && (
-                                                                    <button
-                                                                        title="Link əlavə et"
-                                                                        onClick={() => handleSectionChange(selectedPageIndex, section.id, 'url', `${window.location.origin}/`)}
-                                                                        style={{ background: '#fff', border: '1px solid #dbeafe', color: '#2563eb', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
-                                                                    >
-                                                                        <Globe size={12} /> Link əlavə et
-                                                                    </button>
-                                                                )}
-                                                                <button
-                                                                    title="Yuxarı daşı"
-                                                                    onClick={() => moveField('text', section.id, 'up')}
-                                                                    disabled={!canMoveUp}
-                                                                    style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveUp ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveUp ? 'pointer' : 'not-allowed', fontSize: '12px' }}
-                                                                >
-                                                                    <ChevronUp size={12} /> Yuxarı
-                                                                </button>
-                                                                <button
-                                                                    title="Aşağı daşı"
-                                                                    onClick={() => moveField('text', section.id, 'down')}
-                                                                    disabled={!canMoveDown}
-                                                                    style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveDown ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveDown ? 'pointer' : 'not-allowed', fontSize: '12px' }}
-                                                                >
-                                                                    <ChevronDown size={12} /> Aşağı
-                                                                </button>
-                                                                {deletable && (
-                                                                    <button
-                                                                        className="field-delete-btn"
-                                                                        onClick={() => removeField('text', section.id)}
-                                                                        style={{ background: '#fff', border: '1px solid #fee2e2', color: '#ef4444', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
-                                                                    >
-                                                                        <Trash2 size={12} /> Sil
-                                                                    </button>
-                                                                )}
-                                                            </div>
+                                            ) : currentPage?.id === 'contactpage' ? (
+                                                contactGroupedSections.map((group) => (
+                                                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                        <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>
+                                                            {group.title}
                                                         </div>
-                                                    );
-                                                })
+                                                        {group.sections.map((section, index) => renderTextSectionCard(section, index))}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                displayedSections.map((section, visibleIndex) => renderTextSectionCard(section, visibleIndex))
                                             )}
                                         </div>
                                     </div>

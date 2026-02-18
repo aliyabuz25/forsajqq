@@ -11,6 +11,9 @@ const ContactPage: React.FC = () => {
   const requiredFieldsToast = getText('FORM_TOAST_REQUIRED', 'Zəhmət olmasa bütün sahələri doldurun.');
   const submitSuccessToast = getText('FORM_TOAST_SUCCESS', 'Müraciətiniz uğurla göndərildi!');
   const submitErrorToast = getText('FORM_TOAST_ERROR', 'Gondərilmə zamanı xəta baş verdi.');
+  const formMethodRaw = (getText('FORM_METHOD', 'POST') || 'POST').toUpperCase();
+  const formMethod = ['POST', 'PUT', 'PATCH'].includes(formMethodRaw) ? formMethodRaw : 'POST';
+  const formContentType = getText('FORM_CONTENT_TYPE', 'application/json') || 'application/json';
 
   const { getPage: getSocialsPage } = useSiteContent('socials');
   const socialsPage = getSocialsPage('socials');
@@ -164,8 +167,8 @@ const ContactPage: React.FC = () => {
 
             try {
               const res = await fetch('/api/applications', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: formMethod,
+                headers: { 'Content-Type': formContentType },
                 body: JSON.stringify(data)
               });
               if (res.ok) {
