@@ -388,6 +388,7 @@ const resolvePageGroup = (pageParam?: string | null) => {
 
 const CONTENT_VERSION_KEY = 'forsaj_site_content_version';
 const GROUPED_PAGE_COLLAPSE_KEY = 'forsaj_grouped_page_collapsed_v1';
+const SECTION_COLLAPSE_KEY = 'forsaj_section_collapsed_v1';
 const normalizeOrder = (value: number | undefined, fallback: number) =>
     Number.isFinite(value as number) ? (value as number) : fallback;
 
@@ -408,6 +409,15 @@ const VisualEditor: React.FC = () => {
     const [groupedPageCollapsed, setGroupedPageCollapsed] = useState<Record<string, boolean>>(() => {
         try {
             const raw = localStorage.getItem(GROUPED_PAGE_COLLAPSE_KEY);
+            const parsed = raw ? JSON.parse(raw) : {};
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch {
+            return {};
+        }
+    });
+    const [sectionCollapsed, setSectionCollapsed] = useState<Record<string, boolean>>(() => {
+        try {
+            const raw = localStorage.getItem(SECTION_COLLAPSE_KEY);
             const parsed = raw ? JSON.parse(raw) : {};
             return parsed && typeof parsed === 'object' ? parsed : {};
         } catch {
@@ -454,6 +464,10 @@ const VisualEditor: React.FC = () => {
     useEffect(() => {
         localStorage.setItem(GROUPED_PAGE_COLLAPSE_KEY, JSON.stringify(groupedPageCollapsed));
     }, [groupedPageCollapsed]);
+
+    useEffect(() => {
+        localStorage.setItem(SECTION_COLLAPSE_KEY, JSON.stringify(sectionCollapsed));
+    }, [sectionCollapsed]);
     const [driverCategories, setDriverCategories] = useState<DriverCategory[]>([]);
     const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
     const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
@@ -1183,10 +1197,10 @@ const VisualEditor: React.FC = () => {
         setPages(newPages);
     };
 
-    const removeField = (type: 'text' | 'image', fieldId: string) => {
-        if (selectedPageIndex < 0 || selectedPageIndex >= pages.length) return;
+    const removeField = (type: 'text' | 'image', fieldId: string, pageIdx: number = selectedPageIndex) => {
+        if (pageIdx < 0 || pageIdx >= pages.length) return;
         const newPages = [...pages];
-        const currentPage = newPages[selectedPageIndex];
+        const currentPage = newPages[pageIdx];
         if (!currentPage) return;
 
         if (type === 'text') {
@@ -1201,10 +1215,10 @@ const VisualEditor: React.FC = () => {
         toast.success('Sahə silindi');
     };
 
-    const moveField = (type: 'text' | 'image', fieldId: string, direction: 'up' | 'down') => {
-        if (selectedPageIndex < 0 || selectedPageIndex >= pages.length) return;
+    const moveField = (type: 'text' | 'image', fieldId: string, direction: 'up' | 'down', pageIdx: number = selectedPageIndex) => {
+        if (pageIdx < 0 || pageIdx >= pages.length) return;
         const newPages = [...pages];
-        const currentPage = newPages[selectedPageIndex];
+        const currentPage = newPages[pageIdx];
         if (!currentPage) return;
 
         const list = type === 'text' ? currentPage.sections : currentPage.images;
@@ -2369,6 +2383,8 @@ const VisualEditor: React.FC = () => {
         section.id.startsWith('val-icon-') ||
         /ikon|icon/i.test(section.label || '');
 
+    const getSectionCollapseStorageKey = (pageId: string, sectionId: string) => `${pageId}::${sectionId}`;
+
     const renderTextSectionCard = (section: Section, visibleIndex: number, pageIdx: number = selectedPageIndex, pageContext: PageContent | undefined = currentPage) => {
         const editable = isSectionBusinessEditable(section);
         const key = extractSectionKey(section);
@@ -2382,6 +2398,9 @@ const VisualEditor: React.FC = () => {
         const canMoveUp = realIndex > 0;
         const canMoveDown = realIndex >= 0 && realIndex < realSections.length - 1;
         const iconField = isIconField(section);
+        const pageIdForStorage = pageContext?.id || currentPage?.id || 'unknown';
+        const collapseStorageKey = getSectionCollapseStorageKey(pageIdForStorage, section.id);
+        const isCollapsed = Boolean(sectionCollapsed[collapseStorageKey]);
 
         return (
             <div key={`${section.id}-${visibleIndex}`} className="field-item-wrapper" style={{ background: editable ? '#fcfcfd' : '#f8fafc', padding: '1.25rem', borderRadius: '14px', border: editable ? '1px solid #e5e7eb' : '1px dashed #cbd5e1' }}>
@@ -2401,7 +2420,23 @@ const VisualEditor: React.FC = () => {
                     <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginLeft: 'auto' }}>
                         Sıra: {visibleIndex + 1}
                     </span>
+                    <label className="section-hide-toggle">
+                        <input
+                            type="checkbox"
+                            checked={isCollapsed}
+                            onChange={(e) => {
+                                setSectionCollapsed((prev) => ({ ...prev, [collapseStorageKey]: e.target.checked }));
+                            }}
+                        />
+                        <span>Paneldə gizlə</span>
+                    </label>
                 </div>
+                {isCollapsed ? (
+                    <div className="section-collapsed-tip">
+                        Bu section paneldə gizlidir. Yenidən göstərmək üçün “Paneldə gizlə” seçimini söndürün.
+                    </div>
+                ) : (
+                    <>
                 {iconField ? (
                     <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px' }}>
                         <select
@@ -2464,7 +2499,7 @@ const VisualEditor: React.FC = () => {
                     )}
                     <button
                         title="Yuxarı daşı"
-                        onClick={() => moveField('text', section.id, 'up')}
+                        onClick={() => moveField('text', section.id, 'up', pageIdx)}
                         disabled={!canMoveUp}
                         style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveUp ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveUp ? 'pointer' : 'not-allowed', fontSize: '12px' }}
                     >
@@ -2472,7 +2507,7 @@ const VisualEditor: React.FC = () => {
                     </button>
                     <button
                         title="Aşağı daşı"
-                        onClick={() => moveField('text', section.id, 'down')}
+                        onClick={() => moveField('text', section.id, 'down', pageIdx)}
                         disabled={!canMoveDown}
                         style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveDown ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveDown ? 'pointer' : 'not-allowed', fontSize: '12px' }}
                     >
@@ -2481,13 +2516,15 @@ const VisualEditor: React.FC = () => {
                     {deletable && (
                         <button
                             className="field-delete-btn"
-                            onClick={() => removeField('text', section.id)}
+                            onClick={() => removeField('text', section.id, pageIdx)}
                             style={{ background: '#fff', border: '1px solid #fee2e2', color: '#ef4444', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
                         >
                             <Trash2 size={12} /> Sil
                         </button>
                     )}
                 </div>
+                    </>
+                )}
             </div>
         );
     };
@@ -3676,75 +3713,9 @@ const VisualEditor: React.FC = () => {
                                                     </div>
                                                 )}
 
-                                                {pageSections.map((section) => {
-                                                    const sectionKey = extractSectionKey(section);
-                                                    const canEditValue = canEditSectionField(section, 'value');
-                                                    const canEditUrl = canEditSectionField(section, 'url');
-                                                    const hasUrl = !!section.url?.trim();
-                                                    const iconField = isIconField(section);
-                                                    return (
-                                                        <div key={`${page.id}-${section.id}`} className="field-item-wrapper" style={{ position: 'relative', background: '#fcfcfd', padding: '1rem', borderRadius: '12px', border: '1px solid #f0f0f2' }}>
-                                                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, marginBottom: '6px' }}>
-                                                                {sectionKey ? humanizeKey(sectionKey) : section.label}
-                                                            </div>
-                                                            {iconField ? (
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px' }}>
-                                                                    <select
-                                                                        value={section.value || ''}
-                                                                        disabled={!canEditValue}
-                                                                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
-                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                                                                    >
-                                                                        {ICON_PRESETS.map((opt) => (
-                                                                            <option key={opt} value={opt}>{opt}</option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <input
-                                                                        type="text"
-                                                                        value={section.value || ''}
-                                                                        disabled={!canEditValue}
-                                                                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
-                                                                        style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                                                                    />
-                                                                </div>
-                                                            ) : (
-                                                                <textarea
-                                                                    rows={3}
-                                                                    value={section.value}
-                                                                    disabled={!canEditValue}
-                                                                    onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
-                                                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: 1.4, resize: 'vertical' }}
-                                                                />
-                                                            )}
-
-                                                            {hasUrl && (
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.75rem' }}>
-                                                                    <Globe size={14} style={{ color: '#94a3b8' }} />
-                                                                    <input
-                                                                        type="text"
-                                                                        value={toAbsoluteUrl(section.url || '')}
-                                                                        disabled={!canEditUrl}
-                                                                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'url', e.target.value)}
-                                                                        onBlur={() => normalizeSectionUrl(pageIdx, section.id)}
-                                                                        placeholder="https://example.com/path"
-                                                                        style={{ fontSize: '12px', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1 }}
-                                                                    />
-                                                                </div>
-                                                            )}
-
-                                                            {!hasUrl && canEditUrl && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="add-field-minimal"
-                                                                    onClick={() => handleSectionChange(pageIdx, section.id, 'url', `${window.location.origin}/`)}
-                                                                    style={{ marginTop: '0.75rem' }}
-                                                                >
-                                                                    <Plus size={14} /> Link əlavə et
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
+                                                {pageSections.map((section, visibleIndex) =>
+                                                    renderTextSectionCard(section, visibleIndex, pageIdx, page)
+                                                )}
                                             </div>
 
                                             <div style={{ marginTop: '1rem' }}>
