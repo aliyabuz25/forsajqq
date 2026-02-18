@@ -16,17 +16,38 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
   const logoImg = getImageGeneral('SITE_LOGO_LIGHT').path;
 
   const defaultNavItems = [
-    { name: 'ANA SƏHİFƏ', id: 'home' },
-    { name: 'HAQQIMIZDA', id: 'about' },
-    { name: 'XƏBƏRLƏR', id: 'news' },
-    { name: 'TƏDBİRLƏR', id: 'events' },
-    { name: 'SÜRÜCÜLƏR', id: 'drivers' },
-    { name: 'QALEREYA', id: 'gallery' },
-    { name: 'QAYDALAR', id: 'rules' },
-    { name: 'ƏLAQƏ', id: 'contact' },
+    { name: 'ANA SƏHİFƏ', target: { type: 'view', view: 'home' } as NavTarget, activeView: 'home' },
+    { name: 'HAQQIMIZDA', target: { type: 'view', view: 'about' } as NavTarget, activeView: 'about' },
+    { name: 'XƏBƏRLƏR', target: { type: 'view', view: 'news' } as NavTarget, activeView: 'news' },
+    { name: 'TƏDBİRLƏR', target: { type: 'view', view: 'events' } as NavTarget, activeView: 'events' },
+    { name: 'SÜRÜCÜLƏR', target: { type: 'view', view: 'drivers' } as NavTarget, activeView: 'drivers' },
+    { name: 'QALEREYA', target: { type: 'view', view: 'gallery' } as NavTarget, activeView: 'gallery' },
+    { name: 'QAYDALAR', target: { type: 'view', view: 'rules' } as NavTarget, activeView: 'rules' },
+    { name: 'ƏLAQƏ', target: { type: 'view', view: 'contact' } as NavTarget, activeView: 'contact' },
   ];
 
   const viewIds = new Set(['home', 'about', 'news', 'events', 'drivers', 'gallery', 'rules', 'contact']);
+  const viewByPath: Record<string, string> = {
+    home: 'home',
+    about: 'about',
+    news: 'news',
+    events: 'events',
+    drivers: 'drivers',
+    gallery: 'gallery',
+    rules: 'rules',
+    contact: 'contact',
+    ana: 'home',
+    haqqimizda: 'about',
+    xeberler: 'news',
+    tedbirler: 'events',
+    suruculer: 'drivers',
+    qaydalar: 'rules',
+    elaqe: 'contact',
+  };
+
+  type NavTarget =
+    | { type: 'view'; view: string }
+    | { type: 'external'; url: string };
   const normalize = (value: string) =>
     (value || '')
       .toLocaleLowerCase('az')
@@ -54,6 +75,54 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
     return null;
   };
 
+  const resolveViewFromUrl = (url: string): string | null => {
+    const raw = (url || '').trim();
+    if (!raw) return null;
+
+    const direct = normalize(raw);
+    if (viewIds.has(direct)) return direct;
+    if (viewByPath[direct]) return viewByPath[direct];
+
+    try {
+      const parsed = new URL(raw, window.location.origin);
+      const sameOrigin = parsed.origin === window.location.origin;
+      if (!sameOrigin) return null;
+
+      const pathToken = normalize(parsed.pathname.replace(/^\/+|\/+$/g, ''));
+      const hashToken = normalize(parsed.hash.replace(/^#/, ''));
+      const queryView = normalize(parsed.searchParams.get('view') || '');
+      const queryTab = normalize(parsed.searchParams.get('tab') || '');
+
+      const candidates = [pathToken, hashToken, queryView, queryTab];
+      for (const candidate of candidates) {
+        if (!candidate) continue;
+        if (viewIds.has(candidate)) return candidate;
+        if (viewByPath[candidate]) return viewByPath[candidate];
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  };
+
+  const resolveNavTarget = (rawUrl: string, fallbackText: string, fallbackLabel: string): NavTarget => {
+    const inferred =
+      inferViewFromText(fallbackText) ||
+      inferViewFromText(fallbackLabel) ||
+      resolveViewFromUrl(rawUrl);
+
+    if (inferred) {
+      return { type: 'view', view: inferred };
+    }
+
+    if (rawUrl.startsWith('http')) {
+      return { type: 'external', url: rawUrl };
+    }
+
+    return { type: 'view', view: 'home' };
+  };
+
   const navItems = (navbarPage?.sections || [])
     .filter((s) => {
       const label = (s.label || '').toUpperCase();
@@ -68,24 +137,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
       const fallbackName = (s.value || s.label || '').trim();
       const name = getText(s.id, fallbackName);
       const rawUrl = (s.url || '').trim();
-      const inferred = inferViewFromText(fallbackName) || inferViewFromText(s.label || '');
-      const normalizedUrl = normalize(rawUrl);
+      const target = resolveNavTarget(rawUrl, fallbackName, s.label || '');
+      const activeView = target.type === 'view' ? target.view : null;
 
-      let id = rawUrl;
-      if (!rawUrl.startsWith('http')) {
-        // CMS-dən sürüşmüş URL-lər gələ bildiyi üçün daxili route-da label infer-i prioritetdir.
-        if (inferred) {
-          id = inferred;
-        } else if (viewIds.has(rawUrl)) {
-          id = rawUrl;
-        } else if (viewIds.has(normalizedUrl)) {
-          id = normalizedUrl;
-        } else {
-          id = 'home';
-        }
-      }
-
-      return { name, id };
+      return { name, target, activeView };
     });
 
   const resolvedNavItems = navItems.length > 0 ? navItems : defaultNavItems;
@@ -114,10 +169,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
     }
   };
 
-  const getLocalizedNavLabel = (item: { id: string; name: string }) => {
+  const getLocalizedNavLabel = (item: { activeView: string | null; name: string }) => {
     if (language === 'AZ') return item.name;
     const dictionary = navLabelByLang[language as 'RU' | 'ENG'];
-    return dictionary?.[item.id] || item.name;
+    return (item.activeView && dictionary?.[item.activeView]) || item.name;
   };
 
   return (
@@ -146,15 +201,15 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
       <div className="hidden lg:flex items-center gap-2 xl:gap-4">
         {resolvedNavItems.map((item, idx) => (
           <button
-            key={`${item.id}-${idx}`}
+            key={`${item.name}-${idx}`}
             onClick={() => {
-              if (item.id.startsWith('http')) {
-                window.open(item.id, '_blank');
+              if (item.target.type === 'external') {
+                window.open(item.target.url, '_blank');
               } else {
-                onViewChange((viewIds.has(item.id) ? item.id : 'home') as any);
+                onViewChange((viewIds.has(item.target.view) ? item.target.view : 'home') as any);
               }
             }}
-            className={`px-4 py-2 text-[10px] xl:text-[11px] font-black italic transition-all uppercase tracking-tight relative transform -skew-x-12 ${currentView === item.id
+            className={`px-4 py-2 text-[10px] xl:text-[11px] font-black italic transition-all uppercase tracking-tight relative transform -skew-x-12 ${currentView === item.activeView
               ? 'bg-[#FF4D00] text-black shadow-[0_0_25px_rgba(255,77,0,0.25)] border-2 border-[#FF4D00]'
               : 'text-gray-400 hover:text-white hover:bg-white/5 border-2 border-transparent'
               }`}

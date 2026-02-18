@@ -126,6 +126,20 @@
     margin-bottom: 0.5rem;
 }
 
+.field-group label.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0;
+}
+
+.field-group label.toggle-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+    margin: 0;
+}
+
 .field-group input,
 .field-group textarea {
     width: 100%;

@@ -25,6 +25,7 @@ import {
     Settings,
     Globe,
     Eye,
+    Activity,
     Hexagon,
     LogOut
 } from 'lucide-react';
@@ -76,7 +77,8 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
         Inbox,
         Settings,
         Globe,
-        Eye
+        Eye,
+        Activity
     };
 
     const IconComponent = ({ name, className }: { name: string; className?: string }) => {

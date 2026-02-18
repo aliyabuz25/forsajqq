@@ -189,6 +189,7 @@ const App: React.FC = () => {
             { title: 'SEO Ayarları', path: '/general-settings?tab=seo', icon: 'Globe' },
             { title: 'Ümumi Parametrlər', path: '/general-settings?tab=general', icon: 'Sliders' },
             { title: 'Əlaqə və Sosial', path: '/general-settings?tab=contact', icon: 'Phone' },
+            { title: 'Marquee Ayarları', path: '/general-settings?tab=marquee', icon: 'Activity' },
             { title: 'Tətbiq Ayarları', path: '/general-settings?tab=stats', icon: 'Activity' },
             { title: 'Gizlənən Ayarlar', path: '/general-settings?tab=hidden', icon: 'Eye' },
           ];

@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Image as ImageIcon, BarChart3, Save, Upload, Mail, Eye, EyeOff } from 'lucide-react';
+import { Globe, Image as ImageIcon, BarChart3, Save, Upload, Mail, Eye, EyeOff, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import './GeneralSettings.css';
 
 const HIDDEN_SETTINGS_STORAGE_KEY = 'forsaj_general_hidden_cards';
+const PAGE_DEFAULT_TITLES: Record<string, string> = {
+    general: 'SİSTEM AYARLARI',
+    marquee: 'MARQUEE'
+};
 
 const GeneralSettings: React.FC = () => {
     const [pages, setPages] = useState<any[]>([]);
@@ -83,6 +87,7 @@ const GeneralSettings: React.FC = () => {
             contact: 'contact-details',
             social: 'social-links',
             stats: 'stats',
+            marquee: 'marquee-settings',
         };
 
         const section = tab ? tabToSection[tab] : '';
@@ -96,13 +101,20 @@ const GeneralSettings: React.FC = () => {
         }, 50);
     }, [location.search, isLoading]);
 
-    const updateField = (id: string, value: string, isImage: boolean = false) => {
-        const newPages = [...pages];
-        let pageIdx = newPages.findIndex(p => p.id === 'general');
+    const ensurePage = (draftPages: any[], pageId: string) => {
+        let pageIdx = draftPages.findIndex((p) => p.id === pageId);
         if (pageIdx === -1) {
-            newPages.push({ id: 'general', title: 'SİSTEM AYARLARI', sections: [], images: [] });
-            pageIdx = newPages.length - 1;
+            draftPages.push({ id: pageId, title: PAGE_DEFAULT_TITLES[pageId] || pageId.toUpperCase(), sections: [], images: [], active: true });
+            pageIdx = draftPages.length - 1;
         }
+        if (!Array.isArray(draftPages[pageIdx].sections)) draftPages[pageIdx].sections = [];
+        if (!Array.isArray(draftPages[pageIdx].images)) draftPages[pageIdx].images = [];
+        return pageIdx;
+    };
+
+    const updateField = (id: string, value: string, isImage: boolean = false, pageId: string = 'general') => {
+        const newPages = [...pages];
+        const pageIdx = ensurePage(newPages, pageId);
 
         if (isImage) {
             const imgIdx = newPages[pageIdx].images.findIndex((img: any) => img.id === id);
@@ -122,8 +134,8 @@ const GeneralSettings: React.FC = () => {
         setPages(newPages);
     };
 
-    const getFieldValue = (id: string, isImage: boolean = false) => {
-        const page = pages.find(p => p.id === 'general');
+    const getFieldValue = (id: string, isImage: boolean = false, pageId: string = 'general') => {
+        const page = pages.find((p) => p.id === pageId);
         if (!page) return '';
         if (isImage) {
             return page.images.find((img: any) => img.id === id)?.path || '';
@@ -131,7 +143,46 @@ const GeneralSettings: React.FC = () => {
         return page.sections.find((sec: any) => sec.id === id)?.value || '';
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    const getPageActive = (pageId: string, fallback: boolean = true) => {
+        const page = pages.find((p) => p.id === pageId);
+        if (!page || page.active === undefined) return fallback;
+        return Boolean(page.active);
+    };
+
+    const setPageActive = (pageId: string, active: boolean) => {
+        const newPages = [...pages];
+        const pageIdx = ensurePage(newPages, pageId);
+        newPages[pageIdx].active = active;
+        setPages(newPages);
+    };
+
+    const getMarqueeTextValue = () => {
+        const marqueePage = pages.find((p) => p.id === 'marquee');
+        if (!marqueePage) return '';
+        return (
+            marqueePage.sections?.find((sec: any) => sec.id === 'MARQUEE_TEXT')?.value ||
+            marqueePage.sections?.[0]?.value ||
+            ''
+        );
+    };
+
+    const updateMarqueeTextValue = (value: string) => {
+        const newPages = [...pages];
+        const pageIdx = ensurePage(newPages, 'marquee');
+        const sections = newPages[pageIdx].sections;
+        const explicitIdx = sections.findIndex((sec: any) => sec.id === 'MARQUEE_TEXT');
+
+        if (explicitIdx >= 0) {
+            sections[explicitIdx].value = value;
+        } else if (sections.length > 0) {
+            sections[0].value = value;
+        } else {
+            sections.push({ id: 'MARQUEE_TEXT', type: 'text', label: 'MARQUEE_TEXT', value });
+        }
+        setPages(newPages);
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, id: string, pageId: string = 'general') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -143,7 +194,7 @@ const GeneralSettings: React.FC = () => {
             const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
             if (res.ok) {
                 const data = await res.json();
-                updateField(id, data.url, true);
+                updateField(id, data.url, true, pageId);
                 toast.success('Şəkil yükləndi', { id: toastId });
             }
         } catch (err) {
@@ -564,6 +615,57 @@ const GeneralSettings: React.FC = () => {
                                 onChange={(e) => updateField('SOCIAL_FACEBOOK', e.target.value)}
                                 placeholder="https://facebook.com/forsajclub"
                             />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Marquee Section */}
+                <div className={getCardClassName('marquee-settings')} data-settings-section="marquee-settings">
+                    <div className="card-header">
+                        <Activity size={20} className="text-amber-500" />
+                        <h2>Marquee Ayarları</h2>
+                        {renderCardAction('marquee-settings')}
+                    </div>
+                    <div className="card-body">
+                        <div className="field-group">
+                            <label className="toggle-row">
+                                <input
+                                    type="checkbox"
+                                    checked={getPageActive('marquee', true)}
+                                    onChange={(e) => setPageActive('marquee', e.target.checked)}
+                                />
+                                <span>Marquee aktivdir (səhifədə göstər)</span>
+                            </label>
+                        </div>
+                        <div className="field-group">
+                            <label>Marquee mətni</label>
+                            <textarea
+                                value={getMarqueeTextValue()}
+                                onChange={(e) => updateMarqueeTextValue(e.target.value)}
+                                placeholder="Məs: FORSAJ CLUB // OFFROAD MOTORSPORT HUB"
+                            />
+                        </div>
+                        <div className="field-group">
+                            <label>Marquee arxa plan şəkli</label>
+                            <div className="logo-preview" style={{ minHeight: '90px' }}>
+                                {getFieldValue('marquee-image', true, 'marquee') ? (
+                                    <img src={getFieldValue('marquee-image', true, 'marquee')} alt="Marquee Background" />
+                                ) : (
+                                    <div className="no-logo">Arxa plan şəkli yoxdur</div>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4" style={{ marginTop: '10px' }}>
+                                <label className="upload-btn">
+                                    <Upload size={14} /> Şəkil yüklə
+                                    <input type="file" hidden onChange={(e) => handleFileUpload(e, 'marquee-image', 'marquee')} />
+                                </label>
+                                <input
+                                    type="text"
+                                    value={getFieldValue('marquee-image', true, 'marquee')}
+                                    onChange={(e) => updateField('marquee-image', e.target.value, true, 'marquee')}
+                                    placeholder="https://forsaj.az/marquee-bg.jpg"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
