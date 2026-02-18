@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Save, Type, Image as ImageIcon, Layout, Globe, Plus, Trash2, X, Search, Calendar, FileText, Trophy, Video, Play, ChevronUp, ChevronDown, ShieldCheck, Truck, Zap } from 'lucide-react';
+import { Save, Type, Image as ImageIcon, Layout, Globe, Plus, Trash2, X, Search, Calendar, FileText, Trophy, Video, Play, ChevronUp, ChevronDown, Shield, Users, Leaf, Target, Star, Flag, ShieldCheck, Truck, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -98,6 +98,16 @@ const QUILL_MODULES = {
 };
 
 const ICON_PRESETS = ['Shield', 'Users', 'Leaf', 'Zap', 'Target', 'Globe', 'Star', 'Flag'];
+const ICON_PRESET_COMPONENTS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+    Shield,
+    Users,
+    Leaf,
+    Zap,
+    Target,
+    Globe,
+    Star,
+    Flag
+};
 const PARTNER_ICON_PRESETS = ['ShieldCheck', 'Truck', 'Globe', 'Zap'];
 const PARTNER_ICON_COMPONENTS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
     ShieldCheck,
@@ -2804,6 +2814,16 @@ const VisualEditor: React.FC = () => {
         section.id.startsWith('val-icon-') ||
         /ikon|icon/i.test(section.label || '');
 
+    const isCoreValueField = (section: Section) => /^val-(icon|title|desc)-/i.test(section.id);
+
+    const getCoreValueFieldType = (section: Section): 'icon' | 'title' | 'desc' | null => {
+        if (!isCoreValueField(section)) return null;
+        if (/^val-icon-/i.test(section.id)) return 'icon';
+        if (/^val-title-/i.test(section.id)) return 'title';
+        if (/^val-desc-/i.test(section.id)) return 'desc';
+        return null;
+    };
+
     const isLongLegalBodyField = (section: Section, pageId?: string) => {
         if (!pageId || (pageId !== 'privacypolicypage' && pageId !== 'termsofservicepage')) return false;
         if (section.id === 'INTRO_TEXT') return true;
@@ -2825,19 +2845,26 @@ const VisualEditor: React.FC = () => {
         const canMoveUp = realIndex > 0;
         const canMoveDown = realIndex >= 0 && realIndex < realSections.length - 1;
         const iconField = isIconField(section);
+        const coreValueField = isCoreValueField(section);
+        const coreValueFieldType = getCoreValueFieldType(section);
+        const simpleCoreValueField = coreValueField && !showAdvancedEditor;
         const pageIdForStorage = pageContext?.id || currentPage?.id || 'unknown';
         const collapseStorageKey = getSectionCollapseStorageKey(pageIdForStorage, section.id);
         const isCollapsed = Boolean(sectionCollapsed[collapseStorageKey]);
-        const effectiveCollapsed = showAdvancedEditor ? isCollapsed : false;
+        const effectiveCollapsed = showAdvancedEditor && !coreValueField ? isCollapsed : false;
         const textAreaRows = isLongLegalBodyField(section, pageContext?.id) ? 8 : 4;
         const displayTitle = getSectionDisplayTitle(section);
         const sectionHint = getSectionHint(section, pageContext?.id);
+        const iconOptions = Array.from(new Set([...ICON_PRESETS, (section.value || '').trim()].filter(Boolean)));
+        const showSectionHint = !simpleCoreValueField;
+        const showSectionOrder = !simpleCoreValueField;
+        const showSectionActions = !simpleCoreValueField;
 
         return (
-            <div key={`${section.id}-${visibleIndex}`} className="field-item-wrapper" style={{ background: editable ? '#fcfcfd' : '#f8fafc', padding: '1.25rem', borderRadius: '14px', border: editable ? '1px solid #e5e7eb' : '1px dashed #cbd5e1' }}>
+            <div key={`${section.id}-${visibleIndex}`} className="field-item-wrapper" style={{ background: editable ? '#fcfcfd' : '#f8fafc', padding: simpleCoreValueField ? '1rem' : '1.25rem', borderRadius: '14px', border: editable ? '1px solid #e5e7eb' : '1px dashed #cbd5e1' }}>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 260, flex: 1 }}>
-                        {showAdvancedEditor ? (
+                        {showAdvancedEditor && !simpleCoreValueField ? (
                             <input
                                 type="text"
                                 value={looksLikeKeyToken(section.label) ? humanizeKey(section.label) : section.label}
@@ -2848,20 +2875,22 @@ const VisualEditor: React.FC = () => {
                         ) : (
                             <div className="section-title-readonly">{displayTitle}</div>
                         )}
-                        <div className="section-meta-hint">{sectionHint}</div>
-                        {showAdvancedEditor && (
+                        {showSectionHint && <div className="section-meta-hint">{sectionHint}</div>}
+                        {showAdvancedEditor && !simpleCoreValueField && (
                             <div className="section-technical-id">ID: {section.id}</div>
                         )}
                     </div>
-                    {showAdvancedEditor && key && (
+                    {showAdvancedEditor && key && !simpleCoreValueField && (
                         <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', borderRadius: '999px', padding: '3px 8px', fontWeight: 700 }}>
                             Açar mətn
                         </span>
                     )}
-                    <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginLeft: showAdvancedEditor ? '0' : 'auto' }}>
-                        Sıra: {visibleIndex + 1}
-                    </span>
-                    {showAdvancedEditor && (
+                    {showSectionOrder && (
+                        <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginLeft: showAdvancedEditor ? '0' : 'auto' }}>
+                            Sıra: {visibleIndex + 1}
+                        </span>
+                    )}
+                    {showAdvancedEditor && !simpleCoreValueField && (
                         <label className="section-hide-toggle">
                             <input
                                 type="checkbox"
@@ -2881,31 +2910,55 @@ const VisualEditor: React.FC = () => {
                 ) : (
                     <>
                 {iconField ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '8px' }}>
-                        <select
-                            value={section.value || ''}
-                            onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
-                            disabled={!editableValue}
-                            style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                        >
-                            {ICON_PRESETS.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                        </select>
-                        <input
-                            type="text"
-                            value={section.value || ''}
-                            onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
-                            disabled={!editableValue}
-                            style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                        />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(54px, 1fr))', gap: '8px' }}>
+                            {iconOptions.map((opt) => {
+                                const IconComponent = ICON_PRESET_COMPONENTS[opt] || Shield;
+                                const selected = (section.value || '') === opt;
+                                return (
+                                    <button
+                                        key={`${section.id}-${opt}`}
+                                        type="button"
+                                        title={opt}
+                                        onClick={() => handleSectionChange(pageIdx, section.id, 'value', opt)}
+                                        disabled={!editableValue}
+                                        style={{
+                                            height: '48px',
+                                            border: selected ? '1px solid #f97316' : '1px solid #e2e8f0',
+                                            borderRadius: '10px',
+                                            background: selected ? '#fff7ed' : '#fff',
+                                            color: selected ? '#ea580c' : '#475569',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: editableValue ? 'pointer' : 'not-allowed'
+                                        }}
+                                    >
+                                        <IconComponent size={18} />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {(showAdvancedEditor || !coreValueField) && (
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
+                                Seçilmiş ikon: {(section.value || '').trim() || '-'}
+                            </div>
+                        )}
                     </div>
-                ) : key || !shouldUseRichEditor(section) ? (
+                ) : coreValueFieldType === 'title' ? (
+                    <input
+                        type="text"
+                        value={section.value || ''}
+                        onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
+                        disabled={!editableValue}
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700 }}
+                    />
+                ) : key || !shouldUseRichEditor(section) || coreValueFieldType === 'desc' ? (
                     <textarea
                         value={section.value || ''}
                         onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
                         disabled={!editableValue}
-                        rows={textAreaRows}
+                        rows={coreValueFieldType === 'desc' ? 3 : textAreaRows}
                         style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: '1.4', resize: 'vertical' }}
                     />
                 ) : (
@@ -2916,7 +2969,7 @@ const VisualEditor: React.FC = () => {
                         readOnly={!editableValue}
                     />
                 )}
-                {hasUrlValue && (
+                {hasUrlValue && showSectionActions && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.75rem' }}>
                         <Globe size={14} style={{ color: '#94a3b8' }} />
                         <input
@@ -2930,46 +2983,48 @@ const VisualEditor: React.FC = () => {
                         />
                     </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.9rem' }}>
-                    {!hasUrlValue && editableUrl && (
-                        <button
-                            title="Link əlavə et"
-                            onClick={() => handleSectionChange(pageIdx, section.id, 'url', `${window.location.origin}/`)}
-                            style={{ background: '#fff', border: '1px solid #dbeafe', color: '#2563eb', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
-                        >
-                            <Globe size={12} /> Link əlavə et
-                        </button>
-                    )}
-                    {showAdvancedEditor && (
-                        <>
+                {showSectionActions && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.9rem' }}>
+                        {!hasUrlValue && editableUrl && (
                             <button
-                                title="Yuxarı daşı"
-                                onClick={() => moveField('text', section.id, 'up', pageIdx)}
-                                disabled={!canMoveUp}
-                                style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveUp ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveUp ? 'pointer' : 'not-allowed', fontSize: '12px' }}
+                                title="Link əlavə et"
+                                onClick={() => handleSectionChange(pageIdx, section.id, 'url', `${window.location.origin}/`)}
+                                style={{ background: '#fff', border: '1px solid #dbeafe', color: '#2563eb', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
                             >
-                                <ChevronUp size={12} /> Yuxarı
+                                <Globe size={12} /> Link əlavə et
                             </button>
-                            <button
-                                title="Aşağı daşı"
-                                onClick={() => moveField('text', section.id, 'down', pageIdx)}
-                                disabled={!canMoveDown}
-                                style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveDown ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveDown ? 'pointer' : 'not-allowed', fontSize: '12px' }}
-                            >
-                                <ChevronDown size={12} /> Aşağı
-                            </button>
-                            {deletable && (
+                        )}
+                        {showAdvancedEditor && (
+                            <>
                                 <button
-                                    className="field-delete-btn"
-                                    onClick={() => removeField('text', section.id, pageIdx)}
-                                    style={{ background: '#fff', border: '1px solid #fee2e2', color: '#ef4444', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
+                                    title="Yuxarı daşı"
+                                    onClick={() => moveField('text', section.id, 'up', pageIdx)}
+                                    disabled={!canMoveUp}
+                                    style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveUp ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveUp ? 'pointer' : 'not-allowed', fontSize: '12px' }}
                                 >
-                                    <Trash2 size={12} /> Sil
+                                    <ChevronUp size={12} /> Yuxarı
                                 </button>
-                            )}
-                        </>
-                    )}
-                </div>
+                                <button
+                                    title="Aşağı daşı"
+                                    onClick={() => moveField('text', section.id, 'down', pageIdx)}
+                                    disabled={!canMoveDown}
+                                    style={{ background: '#fff', border: '1px solid #e2e8f0', color: canMoveDown ? '#334155' : '#cbd5e1', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: canMoveDown ? 'pointer' : 'not-allowed', fontSize: '12px' }}
+                                >
+                                    <ChevronDown size={12} /> Aşağı
+                                </button>
+                                {deletable && (
+                                    <button
+                                        className="field-delete-btn"
+                                        onClick={() => removeField('text', section.id, pageIdx)}
+                                        style={{ background: '#fff', border: '1px solid #fee2e2', color: '#ef4444', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12px' }}
+                                    >
+                                        <Trash2 size={12} /> Sil
+                                    </button>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
                     </>
                 )}
             </div>
