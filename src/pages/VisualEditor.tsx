@@ -2187,6 +2187,18 @@ const VisualEditor: React.FC = () => {
         }
     };
 
+    const renameCategory = (nextName: string) => {
+        if (!selectedCatId) return;
+        const normalized = nextName.trim();
+        if (!normalized) {
+            toast.error('Kateqoriya adı boş ola bilməz');
+            return;
+        }
+        setDriverCategories(prev => prev.map(cat => (
+            cat.id === selectedCatId ? { ...cat, name: normalized } : cat
+        )));
+    };
+
     if (pages.length === 0 && !isExtracting && !localStorage.getItem('forsaj_extracted')) {
         return (
             <div className="extractor-overlay">
@@ -2872,6 +2884,22 @@ const VisualEditor: React.FC = () => {
                                 <option key={cat.id} value={cat.id}>{cat.name}</option>
                             ))}
                         </select>
+                        {selectedCatId && (
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
+                                    Kateqoriya adı
+                                </label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input
+                                        type="text"
+                                        value={driverCategories.find(c => c.id === selectedCatId)?.name || ''}
+                                        onChange={(e) => renameCategory(e.target.value)}
+                                        placeholder="Kateqoriya adı"
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 'bold' }}
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         <div className="list-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h3>Sürücülər</h3>
