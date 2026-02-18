@@ -200,6 +200,12 @@ const isSectionVisibleInAdmin = (_section: Section) => {
     return true;
 };
 
+const shouldSkipSectionInEditor = (section: Section) => {
+    const key = extractSectionKey(section);
+    // Hide token-like keys such as VIEW_ALL_BTN in admin edit UI.
+    return !!key && key.includes('_');
+};
+
 const PARTNER_KEY_REGEX = /^PARTNER_(\d+)_(NAME|TAG|ICON|USE_IMAGE|IMAGE_ID)$/;
 type PartnerField = 'name' | 'tag' | 'icon' | 'useImage' | 'imageId';
 type PartnerRow = {
@@ -1568,6 +1574,7 @@ const VisualEditor: React.FC = () => {
 
     const displayedSections = (currentPage?.sections || []).filter(s => {
         if (!isSectionVisibleInAdmin(s)) return false;
+        if (shouldSkipSectionInEditor(s)) return false;
         if (currentPage?.id === 'about' && isStatSectionId(s.id)) return false;
         if (currentPage?.id === 'partners' && (PARTNER_KEY_REGEX.test(s.id) || s.id === 'SECTION_TITLE')) return false;
         if (!extractSectionKey(s) && looksLikeKeyToken(s.value)) return false;
@@ -2432,7 +2439,7 @@ const VisualEditor: React.FC = () => {
                             <div className="edit-fields" style={{ width: '100%' }}>
                                 {activeGroupPages.map(({ page, pageIdx }) => {
                                     const pageSections = (page.sections || [])
-                                        .filter((section) => isSectionVisibleInAdmin(section))
+                                        .filter((section) => isSectionVisibleInAdmin(section) && !shouldSkipSectionInEditor(section))
                                         .sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
                                     const pageImages = (page.images || [])
                                         .sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
@@ -2506,6 +2513,13 @@ const VisualEditor: React.FC = () => {
                                                     )}
                                                     {pageImages.map((img) => (
                                                         <div key={`${page.id}-${img.id}`} className="image-edit-card" style={{ border: '1px solid #eee', borderRadius: '12px', padding: '0.75rem', background: '#fff' }}>
+                                                            <div style={{ height: '120px', background: '#f8fafc', borderRadius: '8px', marginBottom: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                {img.path ? (
+                                                                    <img src={img.path} alt={img.alt || img.id} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>Önizləmə yoxdur</span>
+                                                                )}
+                                                            </div>
                                                             <input
                                                                 type="text"
                                                                 value={img.path}
@@ -2521,6 +2535,44 @@ const VisualEditor: React.FC = () => {
                                                                 }}
                                                                 style={{ width: '100%', fontSize: '12px', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '8px' }}
                                                             />
+                                                            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                                                <input
+                                                                    id={`group-file-up-${page.id}-${img.id}`}
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    style={{ display: 'none' }}
+                                                                    onChange={async (e) => {
+                                                                        const f = e.target.files?.[0];
+                                                                        if (!f) return;
+                                                                        const url = await uploadImage(f);
+                                                                        if (!url) return;
+                                                                        const newPages = [...pages];
+                                                                        const target = newPages[pageIdx];
+                                                                        if (!target) return;
+                                                                        const idx = target.images.findIndex((i) => i.id === img.id);
+                                                                        if (idx === -1) return;
+                                                                        target.images[idx].path = url;
+                                                                        target.images[idx].type = 'local';
+                                                                        setPages(newPages);
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-secondary"
+                                                                    onClick={() => document.getElementById(`group-file-up-${page.id}-${img.id}`)?.click()}
+                                                                    style={{ fontSize: '11px', padding: '6px 10px' }}
+                                                                >
+                                                                    Fayldan yüklə
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-secondary"
+                                                                    onClick={() => openImageSelector(pageIdx, img.id)}
+                                                                    style={{ fontSize: '11px', padding: '6px 10px' }}
+                                                                >
+                                                                    Kitabxanadan seç
+                                                                </button>
+                                                            </div>
                                                             <input
                                                                 type="text"
                                                                 value={img.alt}

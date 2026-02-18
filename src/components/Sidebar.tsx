@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     Layout,
@@ -24,7 +24,6 @@ import {
     Inbox,
     Settings,
     Globe,
-    ChevronRight,
     Circle,
     Hexagon,
     LogOut
@@ -40,15 +39,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
     const userRole = user?.role || 'secondary';
-    const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
     const location = useLocation();
-
-    const toggleExpand = (title: string) => {
-        setExpandedItems(prev => ({
-            ...prev,
-            [title]: !prev[title]
-        }));
-    };
 
     const iconMap: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
         Layout,
@@ -84,7 +75,6 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
 
     const renderMenuItem = (item: SidebarItem) => {
         const hasChildren = item.children && item.children.length > 0;
-        const isExpanded = expandedItems[item.title];
 
         // Better active check including query params
         const isCurrentActive = (path?: string) => {
@@ -100,15 +90,11 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
         if (hasChildren) {
             return (
                 <li key={item.title} className={`sidebar-item ${isActive ? 'active' : ''}`}>
-                    <div
-                        className={`sidebar-link has-children ${isExpanded ? 'active expanded' : ''}`}
-                        onClick={() => toggleExpand(item.title)}
-                    >
+                    <div className={`sidebar-link has-children ${isActive ? 'active' : ''}`} style={{ cursor: 'default' }}>
                         {item.icon && <IconComponent name={item.icon} className="sidebar-icon" />}
                         <span className="sidebar-text">{item.title}</span>
-                        <ChevronRight className={`sidebar-chevron ${isExpanded ? 'rotate' : ''}`} size={16} />
                     </div>
-                    <ul className={`sidebar-submenu ${isExpanded ? 'show' : ''}`}>
+                    <ul className="sidebar-submenu show">
                         {item.children?.map(child => (
                             <li key={child.title} className="sidebar-submenu-item">
                                 <NavLink
