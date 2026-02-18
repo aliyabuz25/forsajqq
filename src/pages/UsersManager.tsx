@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Edit, Trash2, Shield, User, Lock, Save, X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { clearAdminSession, getAuthToken } from '../utils/session';
 import './UsersManager.css';
 
 interface AdminUser {
@@ -25,13 +26,22 @@ const UsersManager: React.FC<UsersManagerProps> = ({ currentUser }) => {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('forsaj_admin_token');
+            const token = getAuthToken();
+            if (!token) {
+                clearAdminSession();
+                return;
+            }
             const response = await fetch('/api/users', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
 
+            if (response.status === 401 || response.status === 403) {
+                clearAdminSession();
+                toast.error('Sessiya müddəti bitib. Yenidən daxil olun.');
+                return;
+            }
             if (!response.ok) throw new Error('Yükləmə uğursuz oldu');
 
             const data = await response.json();
@@ -55,7 +65,11 @@ const UsersManager: React.FC<UsersManagerProps> = ({ currentUser }) => {
         }
 
         try {
-            const token = localStorage.getItem('forsaj_admin_token');
+            const token = getAuthToken();
+            if (!token) {
+                clearAdminSession();
+                return;
+            }
             const response = await fetch('/api/users', {
                 method: 'POST',
                 headers: {
@@ -65,6 +79,11 @@ const UsersManager: React.FC<UsersManagerProps> = ({ currentUser }) => {
                 body: JSON.stringify(editingUser)
             });
 
+            if (response.status === 401 || response.status === 403) {
+                clearAdminSession();
+                toast.error('Sessiya müddəti bitib. Yenidən daxil olun.');
+                return;
+            }
             if (response.ok) {
                 toast.success(editingUser.id ? 'İstifadəçi yeniləndi' : 'Yeni istifadəçi yaradıldı');
                 setIsModalOpen(false);
@@ -83,13 +102,22 @@ const UsersManager: React.FC<UsersManagerProps> = ({ currentUser }) => {
         if (!window.confirm('Bu istifadəçini silmək istədiyinizə əminsiniz?')) return;
 
         try {
-            const token = localStorage.getItem('forsaj_admin_token');
+            const token = getAuthToken();
+            if (!token) {
+                clearAdminSession();
+                return;
+            }
             const response = await fetch(`/api/users/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
+            if (response.status === 401 || response.status === 403) {
+                clearAdminSession();
+                toast.error('Sessiya müddəti bitib. Yenidən daxil olun.');
+                return;
+            }
             if (response.ok) {
                 toast.success('İstifadəçi silindi');
                 fetchUsers();

@@ -10,6 +10,7 @@ import ApplicationsManager from './pages/ApplicationsManager';
 import GeneralSettings from './pages/GeneralSettings';
 import { Toaster } from 'react-hot-toast';
 import type { SidebarItem } from './types/navigation';
+import { ADMIN_USER_KEY, clearAdminSession, getAuthToken, SESSION_EXPIRED_EVENT } from './utils/session';
 import './index.css';
 
 const normalizeText = (value: string) =>
@@ -59,6 +60,27 @@ const prettifyItem = (item: SidebarItem): SidebarItem => {
   };
 };
 
+const mergeChildren = (children: SidebarItem[] = []) => {
+  const merged = new Map<string, SidebarItem>();
+  children.forEach((child) => {
+    const key = `${normalizeText(child.title || '')}|${normalizeText((child as any).path || '')}`;
+    if (!key) return;
+    merged.set(key, child);
+  });
+  return Array.from(merged.values());
+};
+
+const isSystemSettingsItem = (item: SidebarItem) => {
+  const titleKey = normalizeText(item?.title || '');
+  const pathKey = normalizeText((item as any)?.path || '');
+  return (
+    titleKey === 'sistem ayarlari' ||
+    pathKey === '/frontend-settings' ||
+    pathKey === '/general-settings' ||
+    pathKey.startsWith('/general-settings?')
+  );
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [sitemap, setSitemap] = useState<SidebarItem[]>([]);
@@ -67,18 +89,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Check for existing session
-    const savedUser = localStorage.getItem('forsaj_admin_user');
-    const token = localStorage.getItem('forsaj_admin_token');
+    const savedUser = localStorage.getItem(ADMIN_USER_KEY);
+    const token = getAuthToken();
 
     if (savedUser && token) {
       try {
         setUser(JSON.parse(savedUser));
       } catch {
-        localStorage.removeItem('forsaj_admin_user');
-        localStorage.removeItem('forsaj_admin_token');
+        clearAdminSession();
         setUser(null);
       }
     } else {
+      clearAdminSession();
       setUser(null);
     }
 
@@ -86,9 +108,18 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const handleSessionExpired = () => setUser(null);
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem('forsaj_admin_token');
-      if (!token) return;
+      const token = getAuthToken();
+      if (!token) {
+        clearAdminSession();
+        return;
+      }
 
       try {
         let nextUnreadCount = unreadCount;
@@ -96,6 +127,10 @@ const App: React.FC = () => {
         const unreadRes = await fetch('/api/applications/unread-count', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (unreadRes.status === 401 || unreadRes.status === 403) {
+          clearAdminSession();
+          return;
+        }
         if (unreadRes.ok) {
           const { count } = await unreadRes.json();
           nextUnreadCount = Number(count) || 0;
@@ -136,38 +171,49 @@ const App: React.FC = () => {
             { title: 'Tətbiq Ayarları', path: '/general-settings?tab=stats', icon: 'Activity' },
           ];
 
-          const systemIdx = items.findIndex((i: any) => normalizeText(i?.title || '') === 'sistem ayarlari');
-          if (systemIdx === -1) {
-            items = [
-              ...items,
-              {
-                title: 'Sistem Ayarları',
-                icon: 'Settings',
-                children: requiredSystemChildren
-              }
-            ];
+          const systemCandidates = items.filter((item) => isSystemSettingsItem(item));
+          items = items.filter((item) => !isSystemSettingsItem(item));
+
+          const mergedSystemChildren = mergeChildren([
+            ...requiredSystemChildren,
+            ...systemCandidates.flatMap((item) => item.children || [])
+          ]);
+
+          const canonicalSystemItem: SidebarItem = {
+            title: 'Sistem Ayarları',
+            icon: 'Settings',
+            path: '/general-settings?tab=general',
+            children: mergedSystemChildren
+          };
+
+          const adminIdx = items.findIndex((item) => normalizeText((item as any).path || '') === '/users-management');
+          if (adminIdx >= 0) {
+            items.splice(adminIdx + 1, 0, canonicalSystemItem);
           } else {
-            const existing = items[systemIdx];
-            const mergedChildren = new Map<string, SidebarItem>();
-            (existing.children || []).forEach((c: SidebarItem) => {
-              const key = `${normalizeText(c.title)}|${normalizeText((c as any).path || '')}`;
-              mergedChildren.set(key, c);
-            });
-            requiredSystemChildren.forEach((c) => {
-              const key = `${normalizeText(c.title)}|${normalizeText((c as any).path || '')}`;
-              mergedChildren.set(key, c);
-            });
-            items[systemIdx] = { ...existing, children: Array.from(mergedChildren.values()), icon: existing.icon || 'Settings' };
+            items.push(canonicalSystemItem);
           }
 
-          // Final guard against any duplicate menu items by path+title.
-          const deduped = new Map<string, SidebarItem>();
+          // Final guard against duplicate top-level menu names.
+          const dedupedByTitle = new Map<string, SidebarItem>();
           for (const item of items) {
-            const key = `${normalizeText((item as any).path || '')}|${normalizeText(item.title || '')}`;
-            deduped.set(key, item);
+            const titleKey = normalizeText(item.title || '');
+            if (!titleKey) continue;
+            const existing = dedupedByTitle.get(titleKey);
+            if (!existing) {
+              dedupedByTitle.set(titleKey, { ...item, children: mergeChildren(item.children || []) });
+              continue;
+            }
+
+            dedupedByTitle.set(titleKey, {
+              ...existing,
+              path: existing.path || item.path,
+              icon: existing.icon || item.icon,
+              badge: existing.badge || item.badge,
+              children: mergeChildren([...(existing.children || []), ...(item.children || [])])
+            });
           }
 
-          setSitemap(Array.from(deduped.values()));
+          setSitemap(Array.from(dedupedByTitle.values()));
         }
       } catch (err) {
         console.error('Fetch data failed', err);
@@ -201,8 +247,7 @@ const App: React.FC = () => {
         ) : (
           <>
             <Sidebar menuItems={sitemap} user={user} onLogout={() => {
-              localStorage.removeItem('forsaj_admin_user');
-              localStorage.removeItem('forsaj_admin_token');
+              clearAdminSession();
               setUser(null);
             }} />
             <main className="main-content">

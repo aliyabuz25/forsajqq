@@ -99,7 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
     );
 
     const filterByRole = (items: SidebarItem[]): SidebarItem[] => {
-        const restrictedPaths = ['/frontend-settings', '/users-management'];
+        const restrictedPaths = ['/frontend-settings', '/general-settings', '/users-management'];
 
         const filtered = items
             .map((item) => {

@@ -1217,7 +1217,7 @@ app.all('/api/extract-content', async (req, res) => {
                 ]
             },
             { title: 'ADMİN HESABLARI', icon: 'Users', path: '/users-management' },
-            { title: 'SİSTEM AYARLARI', icon: 'Settings', path: '/frontend-settings' }
+            { title: 'SİSTEM AYARLARI', icon: 'Settings', path: '/general-settings' }
         ];
 
         try {
@@ -1273,10 +1273,17 @@ app.get('/api/sitemap', async (req, res) => {
             ];
         }
 
+        sitemap = sitemap.map((item) => {
+            if (item?.path === '/frontend-settings') {
+                return { ...item, path: '/general-settings' };
+            }
+            return item;
+        });
+
         // Ensure Admin Management and Settings are always present for the frontend to filter
         const coreLinks = [
             { title: 'Admin Hesabları', icon: 'Users', path: '/users-management' },
-            { title: 'Sistem Ayarları', icon: 'Settings', path: '/frontend-settings' }
+            { title: 'Sistem Ayarları', icon: 'Settings', path: '/general-settings' }
         ];
 
         coreLinks.forEach(link => {
@@ -1285,7 +1292,31 @@ app.get('/api/sitemap', async (req, res) => {
             }
         });
 
-        res.json(sitemap);
+        const normalizeNavText = (value) =>
+            String(value || '')
+                .toLocaleLowerCase('az')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
+
+        const dedupedByTitle = new Map();
+        sitemap.forEach((item) => {
+            const titleKey = normalizeNavText(item?.title);
+            if (!titleKey) return;
+            const existing = dedupedByTitle.get(titleKey);
+            if (!existing) {
+                dedupedByTitle.set(titleKey, item);
+                return;
+            }
+            dedupedByTitle.set(titleKey, {
+                ...existing,
+                path: existing.path || item.path,
+                icon: existing.icon || item.icon,
+                children: [...(existing.children || []), ...(item.children || [])]
+            });
+        });
+
+        res.json(Array.from(dedupedByTitle.values()));
     } catch (error) {
         console.error('Sitemap read error:', error);
         res.status(500).json({ error: 'Failed to read sitemap' });
