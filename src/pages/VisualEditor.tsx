@@ -227,9 +227,9 @@ const toPartnerField = (token: string): PartnerField | null => {
 };
 
 const componentLabels: Record<string, string> = {
-    'hero': 'Giriş Hissəsi',
-    'marquee': 'Sürüşən Yazı',
-    'navbar': 'Naviqasiya',
+    'hero': 'Hero Bölməsi',
+    'marquee': 'Marquee Yazısı',
+    'navbar': 'Menyu və Naviqasiya',
     'about': 'HAQQIMIZDA',
     'mission_vision': 'Missiya və Vizyon',
     'values': 'Dəyərlərimiz',
@@ -244,7 +244,7 @@ const componentLabels: Record<string, string> = {
     'gallery': 'Qalereya',
     'videos': 'Videolar',
     'videoarchive': 'Video Arxiv',
-    'footer': 'Sayt Sonu',
+    'footer': 'Footer',
     'partners': 'Tərəfdaşlar',
     'offroadinfo': 'Offroad Nədir?',
     'whatisoffroad': 'Offroad Nədir?',
@@ -256,7 +256,7 @@ const componentLabels: Record<string, string> = {
 };
 
 const TAB_PAGE_GROUPS: Record<string, string[]> = {
-    home: ['navbar', 'hero', 'marquee', 'categoryleaders', 'nextrace', 'partners', 'footer'],
+    home: ['navbar', 'hero', 'marquee', 'categoryleaders', 'footer'],
     abouttab: ['about', 'mission_vision', 'values'],
     newstab: ['newspage'],
     eventstab: ['eventspage'],
@@ -1666,7 +1666,7 @@ const VisualEditor: React.FC = () => {
                         className={`mode-btn ${editorMode === 'extract' ? 'active' : ''}`}
                         onClick={() => setEditorMode('extract')}
                     >
-                        Sayt Məzmunu
+                        Ana Səhifə
                     </button>
                     <button
                         className={`mode-btn ${editorMode === 'events' ? 'active' : ''}`}
@@ -2437,6 +2437,20 @@ const VisualEditor: React.FC = () => {
                     <main className="editor-canvas" style={{ width: '100%' }}>
                         {isGroupedTabView ? (
                             <div className="edit-fields" style={{ width: '100%' }}>
+                                {pageParam === 'home' && (
+                                    <div className="canvas-header">
+                                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                                            Ana Səhifə Blokları
+                                        </h2>
+                                    </div>
+                                )}
+                                {pageParam === 'abouttab' && (
+                                    <div className="canvas-header">
+                                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                                            HAQQIMIZDA
+                                        </h2>
+                                    </div>
+                                )}
                                 {activeGroupPages.map(({ page, pageIdx }) => {
                                     const pageSections = (page.sections || [])
                                         .filter((section) => isSectionVisibleInAdmin(section) && !shouldSkipSectionInEditor(section))
