@@ -87,13 +87,15 @@ const Partners: React.FC = () => {
               key={p.id}
               className="group flex flex-col items-center justify-center p-10 bg-[#0A0A0A] border border-white/5 rounded-sm transition-all duration-500 hover:border-[#FF4D00]/30 hover:shadow-[0_20px_50px_rgba(255,77,0,0.1)] cursor-pointer"
             >
-              <div className={`mb-6 p-6 rounded-sm transition-all duration-500 text-gray-700 ${p.color} ${p.bg} ${p.glow} group-hover:scale-110 group-hover:rotate-3`}>
-                {p.useImage && p.imagePath ? (
-                  <img src={p.imagePath} alt={p.imageAlt} className="w-12 h-12 object-contain" />
-                ) : (
-                  p.icon
-                )}
-              </div>
+              {p.useImage && p.imagePath ? (
+                <div className="mb-6 w-full max-w-[180px] h-24 p-2 rounded-sm border border-white/10 bg-white/5 transition-all duration-500 group-hover:bg-white/10 group-hover:scale-105">
+                  <img src={p.imagePath} alt={p.imageAlt} className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className={`mb-6 p-6 rounded-sm transition-all duration-500 text-gray-700 ${p.color} ${p.bg} ${p.glow} group-hover:scale-110 group-hover:rotate-3`}>
+                  {p.icon}
+                </div>
+              )}
 
               {p.name?.trim() && (
                 <div className="relative">
