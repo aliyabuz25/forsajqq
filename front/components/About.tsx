@@ -104,10 +104,10 @@ const About: React.FC = () => {
           <div className="w-2 h-16 bg-[#FF4D00] shadow-[0_0_15px_rgba(255,77,0,0.4)]"></div>
           <div>
             <h2 className="text-6xl md:text-8xl font-black italic tracking-tighter uppercase leading-none text-white">
-              {text('txt-haqqimizda-904', 'HAQQIMIZDA')}
+              {toPlainText(getText('PAGE_TITLE', getText('txt-haqqimizda-904', 'HAQQIMIZDA')))}
             </h2>
             <p className="text-[#FF4D00] font-black italic text-[11px] md:text-sm mt-2 uppercase tracking-[0.4em]">
-              {text('txt-bi-zi-m-hekay-mi-z-m-888', 'BİZİM HEKAYƏMİZ // MİSSİYAMIZ VƏ GƏLƏCƏYİMİZ')}
+              {toPlainText(getText('PAGE_SUBTITLE', getText('txt-bi-zi-m-hekay-mi-z-m-888', 'BİZİM HEKAYƏMİZ // MİSSİYAMIZ VƏ GƏLƏCƏYİMİZ')))}
             </p>
           </div>
         </div>

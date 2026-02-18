@@ -483,7 +483,7 @@ const VisualEditor: React.FC = () => {
                 const defaultIds = [
                     'hero', 'marquee', 'navbar', 'about', 'mission_vision', 'values',
                     'rulespage', 'eventspage', 'newspage', 'gallerypage', 'contactpage',
-                    'news', 'drivers', 'categoryleaders', 'gallery', 'videos', 'videoarchive',
+                    'news', 'drivers', 'driverspage', 'categoryleaders', 'gallery', 'videos', 'videoarchive',
                     'footer', 'partners', 'offroadinfo', 'whatisoffroad', 'nextrace',
                     'site', 'settings', 'general', 'app'
                 ];
@@ -506,6 +506,9 @@ const VisualEditor: React.FC = () => {
                             order: images.length
                         });
                     };
+
+                    ensureSection('PAGE_TITLE', 'Səhifə Başlığı', 'HAQQIMIZDA');
+                    ensureSection('PAGE_SUBTITLE', 'Səhifə Alt Başlığı', 'BİZİM HEKAYƏMİZ // MİSSİYAMIZ VƏ GƏLƏCƏYİMİZ');
 
                     // Ensure key "about" title fields always exist in panel
                     ensureSection(
@@ -730,6 +733,8 @@ const VisualEditor: React.FC = () => {
                 };
                 const ensureEventsDefaults = (page: PageContent) => {
                     ensurePageSectionDefaults(page, [
+                        { id: 'PAGE_TITLE', label: 'Səhifə Başlığı', value: 'TƏDBİRLƏR' },
+                        { id: 'PAGE_SUBTITLE', label: 'Səhifə Alt Başlığı', value: 'OFFICIAL EVENT CALENDAR // FORSAJ CLUB' },
                         { id: 'PILOT_FORM_TOAST_REQUIRED', label: 'Pilot Form Boş Sahə Xəbərdarlığı', value: 'Zəhmət olmasa bütün sahələri doldurun.' },
                         { id: 'PILOT_FORM_TOAST_SUCCESS', label: 'Pilot Form Uğurlu Göndəriş Mesajı', value: 'Qeydiyyat müraciətiniz uğurla göndərildi!' },
                         { id: 'PILOT_FORM_TOAST_ERROR', label: 'Pilot Form Xəta Mesajı', value: 'Gondərilmə zamanı xəta baş verdi.' },
@@ -744,6 +749,30 @@ const VisualEditor: React.FC = () => {
                         { id: 'CLUB_OPTION_7', label: 'Klub Seçimi 7', value: 'PatrolClub.az' },
                         { id: 'CLUB_OPTION_8', label: 'Klub Seçimi 8', value: 'Victory Club' },
                         { id: 'CLUB_OPTION_9', label: 'Klub Seçimi 9', value: 'Zəfər 4X4 Club' }
+                    ]);
+                };
+                const ensureNewsPageDefaults = (page: PageContent) => {
+                    ensurePageSectionDefaults(page, [
+                        { id: 'PAGE_TITLE', label: 'Səhifə Başlığı', value: 'XƏBƏRLƏR' },
+                        { id: 'PAGE_SUBTITLE', label: 'Səhifə Alt Başlığı', value: 'MOTORSPORT MAGAZINE // SEASON 2024' }
+                    ]);
+                };
+                const ensureGalleryPageDefaults = (page: PageContent) => {
+                    ensurePageSectionDefaults(page, [
+                        { id: 'PAGE_TITLE', label: 'Səhifə Başlığı', value: 'QALEREYA' },
+                        { id: 'PAGE_SUBTITLE', label: 'Səhifə Alt Başlığı', value: 'XRONOLOJİ MOTORSPORT ARXİVİ // FORSAJ CLUB' },
+                        { id: 'TAB_PHOTOS', label: 'Tab Foto', value: 'FOTOLAR' },
+                        { id: 'TAB_VIDEOS', label: 'Tab Video', value: 'VİDEOLAR' },
+                        { id: 'DYNAMIC_COLLECTION', label: 'Dinamik Kolleksiya Alt Başlıq', value: 'CANLI ARXİV // YENİLƏNƏN MƏZMUN' },
+                        { id: 'TOTAL_LABEL', label: 'Toplam Etiketi', value: 'TOPLAM' },
+                        { id: 'TYPE_PHOTO', label: 'Foto Tipi', value: 'FOTO' },
+                        { id: 'TYPE_VIDEO', label: 'Video Tipi', value: 'VİDEO' }
+                    ]);
+                };
+                const ensureDriversPageDefaults = (page: PageContent) => {
+                    ensurePageSectionDefaults(page, [
+                        { id: 'PAGE_TITLE', label: 'Səhifə Başlığı', value: 'SÜRÜCÜLƏR' },
+                        { id: 'PAGE_SUBTITLE', label: 'Səhifə Alt Başlığı', value: 'OFFICIAL PILOT STANDINGS // SEASON 2024' }
                     ]);
                 };
                 const ensureFooterDefaults = (page: PageContent) => {
@@ -775,6 +804,10 @@ const VisualEditor: React.FC = () => {
                     ]);
                 };
                 const ensureRulesDefaults = (page: PageContent) => {
+                    ensurePageSectionDefaults(page, [
+                        { id: 'PAGE_TITLE', label: 'Səhifə Başlığı', value: 'QAYDALAR' },
+                        { id: 'PAGE_SUBTITLE', label: 'Səhifə Alt Başlığı', value: 'FORSAJ MOTORSPORT OFFICIAL RULES' }
+                    ]);
                     const sections = page.sections || [];
 
                     const pickLegacyValue = (key: string, fallback: string) =>
@@ -868,6 +901,12 @@ const VisualEditor: React.FC = () => {
                         ensureContactDefaults(found);
                     } else if (id === 'eventspage') {
                         ensureEventsDefaults(found);
+                    } else if (id === 'newspage') {
+                        ensureNewsPageDefaults(found);
+                    } else if (id === 'gallerypage') {
+                        ensureGalleryPageDefaults(found);
+                    } else if (id === 'driverspage') {
+                        ensureDriversPageDefaults(found);
                     } else if (id === 'footer') {
                         ensureFooterDefaults(found);
                     } else if (id === 'categoryleaders') {
@@ -889,6 +928,12 @@ const VisualEditor: React.FC = () => {
                 if (contactPage) ensureContactDefaults(contactPage);
                 const eventsPage = updatedContent.find(p => p.id === 'eventspage');
                 if (eventsPage) ensureEventsDefaults(eventsPage);
+                const newsPage = updatedContent.find(p => p.id === 'newspage');
+                if (newsPage) ensureNewsPageDefaults(newsPage);
+                const galleryPage = updatedContent.find(p => p.id === 'gallerypage');
+                if (galleryPage) ensureGalleryPageDefaults(galleryPage);
+                const driversPage = updatedContent.find(p => p.id === 'driverspage');
+                if (driversPage) ensureDriversPageDefaults(driversPage);
                 const footerPage = updatedContent.find(p => p.id === 'footer');
                 if (footerPage) ensureFooterDefaults(footerPage);
                 const categoryLeadersPage = updatedContent.find(p => p.id === 'categoryleaders');
