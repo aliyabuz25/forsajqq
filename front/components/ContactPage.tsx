@@ -2,6 +2,7 @@ import React from 'react';
 import { MapPin, Phone, Mail, Instagram, Youtube, Facebook, Send, Info, ChevronDown, Clock, Map as MapIcon } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 import toast from 'react-hot-toast';
+import { resolveSocialLinks } from '../utils/socialLinks';
 
 const ContactPage: React.FC = () => {
   const { getText } = useSiteContent('contactpage');
@@ -18,22 +19,16 @@ const ContactPage: React.FC = () => {
   const { getPage: getSocialsPage } = useSiteContent('socials');
   const socialsPage = getSocialsPage('socials');
 
-  const socialLinks = socialsPage?.sections?.length > 0
-    ? socialsPage.sections.map(s => {
-      const label = s.label?.toLowerCase() || '';
-      return {
-        Icon: label.includes('insta') ? Instagram :
-          label.includes('youtube') ? Youtube :
-            label.includes('facebook') ? Facebook :
-              Instagram,
-        url: s.value
-      };
-    })
-    : [
-      { Icon: Instagram, url: getGeneralText('SOCIAL_INSTAGRAM') || '#' },
-      { Icon: Youtube, url: getGeneralText('SOCIAL_YOUTUBE') || '#' },
-      { Icon: Facebook, url: getGeneralText('SOCIAL_FACEBOOK') || '#' },
-    ];
+  const socialIconMap = {
+    instagram: Instagram,
+    youtube: Youtube,
+    facebook: Facebook
+  };
+
+  const socialLinks = resolveSocialLinks(socialsPage?.sections, getGeneralText).map(({ platform, url }) => ({
+    Icon: socialIconMap[platform],
+    url
+  }));
 
 
   return (

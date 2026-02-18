@@ -162,6 +162,42 @@
     box-shadow: 0 0 0 3px rgba(59, 131, 246, 0.1);
 }
 
+.social-input-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+}
+
+.social-test-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #f8fafc;
+    color: #1d4ed8;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.social-test-link:hover {
+    background: #eff6ff;
+}
+
+.social-test-link.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.field-help {
+    display: block;
+    margin-top: 0.45rem;
+    color: #6b7280;
+    font-size: 0.78rem;
+}
+
 .logo-upload-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;

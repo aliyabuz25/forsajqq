@@ -9,6 +9,16 @@ const PAGE_DEFAULT_TITLES: Record<string, string> = {
     general: 'SİSTEM AYARLARI',
     marquee: 'MARQUEE'
 };
+const SOCIAL_FIELD_IDS = ['SOCIAL_INSTAGRAM', 'SOCIAL_YOUTUBE', 'SOCIAL_FACEBOOK'] as const;
+
+const normalizeExternalUrl = (rawValue: string) => {
+    const value = (rawValue || '').trim();
+    if (!value) return '';
+    if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value;
+    if (value.startsWith('//')) return `https:${value}`;
+    if (/^[\w.-]+\.[a-z]{2,}(?:[/?#]|$)/i.test(value)) return `https://${value}`;
+    return value;
+};
 
 const GeneralSettings: React.FC = () => {
     const [pages, setPages] = useState<any[]>([]);
@@ -214,6 +224,21 @@ const GeneralSettings: React.FC = () => {
         setMarqueeSectionValue('MARQUEE_LINK_ACTIVE', active ? '1' : '0');
     };
 
+    const getNormalizedSocialLink = (id: typeof SOCIAL_FIELD_IDS[number]) =>
+        normalizeExternalUrl(getFieldValue(id));
+
+    const sanitizeSocialLinks = (draftPages: any[]) =>
+        draftPages.map((page) => {
+            if (page?.id !== 'general' || !Array.isArray(page.sections)) return page;
+            return {
+                ...page,
+                sections: page.sections.map((section: any) => {
+                    if (!SOCIAL_FIELD_IDS.includes(section?.id)) return section;
+                    return { ...section, value: normalizeExternalUrl(section?.value || '') };
+                })
+            };
+        });
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, id: string, pageId: string = 'general') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -237,11 +262,13 @@ const GeneralSettings: React.FC = () => {
     const saveChanges = async () => {
         setIsSaving(true);
         const toastId = toast.loading('Yadda saxlanılır...');
+        const payload = sanitizeSocialLinks(pages);
+        setPages(payload);
         try {
             await fetch('/api/save-content', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(pages)
+                body: JSON.stringify(payload)
             });
             toast.success('Ayarlar qeyd edildi!', { id: toastId });
         } catch (err) {
@@ -623,30 +650,72 @@ const GeneralSettings: React.FC = () => {
                     <div className="card-body">
                         <div className="field-group">
                             <label>Instagram</label>
-                            <input
-                                type="text"
-                                value={getFieldValue('SOCIAL_INSTAGRAM')}
-                                onChange={(e) => updateField('SOCIAL_INSTAGRAM', e.target.value)}
-                                placeholder="https://instagram.com/forsajclub"
-                            />
+                            <div className="social-input-row">
+                                <input
+                                    type="text"
+                                    value={getFieldValue('SOCIAL_INSTAGRAM')}
+                                    onChange={(e) => updateField('SOCIAL_INSTAGRAM', e.target.value)}
+                                    placeholder="https://instagram.com/forsajclub"
+                                />
+                                <a
+                                    href={getNormalizedSocialLink('SOCIAL_INSTAGRAM') || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`social-test-link${getNormalizedSocialLink('SOCIAL_INSTAGRAM') ? '' : ' disabled'}`}
+                                    onClick={(e) => {
+                                        if (!getNormalizedSocialLink('SOCIAL_INSTAGRAM')) e.preventDefault();
+                                    }}
+                                >
+                                    Test et
+                                </a>
+                            </div>
                         </div>
                         <div className="field-group">
                             <label>Youtube</label>
-                            <input
-                                type="text"
-                                value={getFieldValue('SOCIAL_YOUTUBE')}
-                                onChange={(e) => updateField('SOCIAL_YOUTUBE', e.target.value)}
-                                placeholder="https://youtube.com/@forsajclub"
-                            />
+                            <div className="social-input-row">
+                                <input
+                                    type="text"
+                                    value={getFieldValue('SOCIAL_YOUTUBE')}
+                                    onChange={(e) => updateField('SOCIAL_YOUTUBE', e.target.value)}
+                                    placeholder="https://youtube.com/@forsajclub"
+                                />
+                                <a
+                                    href={getNormalizedSocialLink('SOCIAL_YOUTUBE') || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`social-test-link${getNormalizedSocialLink('SOCIAL_YOUTUBE') ? '' : ' disabled'}`}
+                                    onClick={(e) => {
+                                        if (!getNormalizedSocialLink('SOCIAL_YOUTUBE')) e.preventDefault();
+                                    }}
+                                >
+                                    Test et
+                                </a>
+                            </div>
                         </div>
                         <div className="field-group">
                             <label>Facebook</label>
-                            <input
-                                type="text"
-                                value={getFieldValue('SOCIAL_FACEBOOK')}
-                                onChange={(e) => updateField('SOCIAL_FACEBOOK', e.target.value)}
-                                placeholder="https://facebook.com/forsajclub"
-                            />
+                            <div className="social-input-row">
+                                <input
+                                    type="text"
+                                    value={getFieldValue('SOCIAL_FACEBOOK')}
+                                    onChange={(e) => updateField('SOCIAL_FACEBOOK', e.target.value)}
+                                    placeholder="https://facebook.com/forsajclub"
+                                />
+                                <a
+                                    href={getNormalizedSocialLink('SOCIAL_FACEBOOK') || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`social-test-link${getNormalizedSocialLink('SOCIAL_FACEBOOK') ? '' : ' disabled'}`}
+                                    onClick={(e) => {
+                                        if (!getNormalizedSocialLink('SOCIAL_FACEBOOK')) e.preventDefault();
+                                    }}
+                                >
+                                    Test et
+                                </a>
+                            </div>
+                            <small className="field-help">
+                                Domen ilə başlayan linklərdə (`instagram.com/...`) `https://` avtomatik əlavə ediləcək.
+                            </small>
                         </div>
                     </div>
                 </div>

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Instagram, Youtube, Facebook, ArrowRight, MapPin, Phone } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
+import { resolveSocialLinks } from '../utils/socialLinks';
 
 interface FooterProps {
   onViewChange: (view: 'home' | 'about' | 'news' | 'events' | 'drivers' | 'rules' | 'contact' | 'gallery') => void;
@@ -35,16 +36,10 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
     facebook: Facebook
   };
 
-  const socialLinks = socialsPage?.sections?.length > 0
-    ? socialsPage.sections.map(s => ({
-      Icon: socialIconMap[s.label?.toLowerCase() as keyof typeof socialIconMap] || Instagram,
-      url: s.value
-    }))
-    : [
-      { Icon: Instagram, url: getGeneralText('SOCIAL_INSTAGRAM') || '#' },
-      { Icon: Youtube, url: getGeneralText('SOCIAL_YOUTUBE') || '#' },
-      { Icon: Facebook, url: getGeneralText('SOCIAL_FACEBOOK') || '#' },
-    ];
+  const socialLinks = resolveSocialLinks(socialsPage?.sections, getGeneralText).map(({ platform, url }) => ({
+    Icon: socialIconMap[platform],
+    url
+  }));
 
 
   const navigationLinks = [
