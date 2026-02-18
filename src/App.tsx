@@ -33,6 +33,8 @@ const titleMap: Record<string, string> = {
   'ADMİN HESABLARI': 'İstifadəçi İdarəsi',
   'SİSTEM AYARLARI': 'Sistem Ayarları',
   SOSYAL: 'Sosyal',
+  'MƏXFİLİK SİYASƏTİ': 'PRIVACY POLICY',
+  'XİDMƏT ŞƏRTLƏRİ': 'TERMS OF SERVICE',
 };
 
 const childTitleMap: Record<string, string> = {
@@ -246,6 +248,44 @@ const App: React.FC = () => {
               items.push(socialShortcut);
             }
           }
+
+          const ensureShortcut = (shortcut: SidebarItem, preferredAfterTitles: string[] = []) => {
+            const pathKey = normalizeText(sanitizeMenuPath(shortcut.path) || '');
+            const titleKey = normalizeText(shortcut.title || '');
+            const exists = items.some((item) =>
+              normalizeText(item.title || '') === titleKey ||
+              normalizeText(sanitizeMenuPath(item.path) || '') === pathKey
+            );
+            if (exists) return;
+
+            const preferredIdx = items.findIndex((item) => {
+              const t = normalizeText(item.title || '');
+              return preferredAfterTitles.some((candidate) => t === normalizeText(candidate));
+            });
+            if (preferredIdx >= 0) {
+              items.splice(preferredIdx + 1, 0, shortcut);
+              return;
+            }
+
+            const applicationsIdx = items.findIndex((item) =>
+              normalizeText(item.path || '') === '/applications'
+            );
+            if (applicationsIdx >= 0) {
+              items.splice(applicationsIdx, 0, shortcut);
+              return;
+            }
+
+            items.push(shortcut);
+          };
+
+          ensureShortcut(
+            { title: 'PRIVACY POLICY', icon: 'FileText', path: '/?page=privacypolicypage' },
+            ['Qaydalar', 'QAYDALAR']
+          );
+          ensureShortcut(
+            { title: 'TERMS OF SERVICE', icon: 'FileText', path: '/?page=termsofservicepage' },
+            ['PRIVACY POLICY']
+          );
 
           // Final guard against duplicate top-level menu names.
           const dedupedByTitle = new Map<string, SidebarItem>();

@@ -138,6 +138,62 @@ const CONTACT_SECTION_GROUPS: Array<{ title: string; subtitle: string; ids: stri
     }
 ];
 
+const LEGAL_SECTION_GROUPS: Record<string, Array<{ title: string; subtitle: string; ids: string[] }>> = {
+    privacypolicypage: [
+        {
+            title: 'Səhifə Başlığı',
+            subtitle: 'Ümumi başlıq və tarix məlumatları',
+            ids: ['PAGE_TITLE', 'PAGE_SUBTITLE', 'INTRO_TEXT', 'UPDATED_LABEL', 'UPDATED_DATE']
+        },
+        {
+            title: 'Mətn Bölmələri',
+            subtitle: 'Məxfilik siyasətinin əsas maddələri',
+            ids: [
+                'SECTION_1_TITLE', 'SECTION_1_BODY',
+                'SECTION_2_TITLE', 'SECTION_2_BODY',
+                'SECTION_3_TITLE', 'SECTION_3_BODY',
+                'SECTION_4_TITLE', 'SECTION_4_BODY',
+                'SECTION_5_TITLE', 'SECTION_5_BODY',
+                'SECTION_6_TITLE', 'SECTION_6_BODY',
+                'SECTION_7_TITLE', 'SECTION_7_BODY',
+                'SECTION_8_TITLE', 'SECTION_8_BODY',
+                'SECTION_9_TITLE', 'SECTION_9_BODY'
+            ]
+        },
+        {
+            title: 'Əlaqə',
+            subtitle: 'Səhifənin sonunda görünən əlaqə məlumatları',
+            ids: ['CONTACT_TITLE', 'CONTACT_EMAIL', 'CONTACT_WEBSITE']
+        }
+    ],
+    termsofservicepage: [
+        {
+            title: 'Səhifə Başlığı',
+            subtitle: 'Ümumi başlıq və tarix məlumatları',
+            ids: ['PAGE_TITLE', 'PAGE_SUBTITLE', 'INTRO_TEXT', 'UPDATED_LABEL', 'UPDATED_DATE']
+        },
+        {
+            title: 'Mətn Bölmələri',
+            subtitle: 'Xidmət şərtlərinin əsas maddələri',
+            ids: [
+                'SECTION_1_TITLE', 'SECTION_1_BODY',
+                'SECTION_2_TITLE', 'SECTION_2_BODY',
+                'SECTION_3_TITLE', 'SECTION_3_BODY',
+                'SECTION_4_TITLE', 'SECTION_4_BODY',
+                'SECTION_5_TITLE', 'SECTION_5_BODY',
+                'SECTION_6_TITLE', 'SECTION_6_BODY',
+                'SECTION_7_TITLE', 'SECTION_7_BODY',
+                'SECTION_8_TITLE', 'SECTION_8_BODY'
+            ]
+        },
+        {
+            title: 'Əlaqə',
+            subtitle: 'Səhifənin sonunda görünən əlaqə məlumatları',
+            ids: ['CONTACT_TITLE', 'CONTACT_EMAIL', 'CONTACT_WEBSITE']
+        }
+    ]
+};
+
 const bbcodeToHtmlForEditor = (raw: string) => {
     if (!raw) return '';
 
@@ -2549,6 +2605,12 @@ const VisualEditor: React.FC = () => {
         section.id.startsWith('val-icon-') ||
         /ikon|icon/i.test(section.label || '');
 
+    const isLongLegalBodyField = (section: Section, pageId?: string) => {
+        if (!pageId || (pageId !== 'privacypolicypage' && pageId !== 'termsofservicepage')) return false;
+        if (section.id === 'INTRO_TEXT') return true;
+        return /^SECTION_\d+_BODY$/.test(section.id);
+    };
+
     const getSectionCollapseStorageKey = (pageId: string, sectionId: string) => `${pageId}::${sectionId}`;
 
     const renderTextSectionCard = (section: Section, visibleIndex: number, pageIdx: number = selectedPageIndex, pageContext: PageContent | undefined = currentPage) => {
@@ -2567,6 +2629,7 @@ const VisualEditor: React.FC = () => {
         const pageIdForStorage = pageContext?.id || currentPage?.id || 'unknown';
         const collapseStorageKey = getSectionCollapseStorageKey(pageIdForStorage, section.id);
         const isCollapsed = Boolean(sectionCollapsed[collapseStorageKey]);
+        const textAreaRows = isLongLegalBodyField(section, pageContext?.id) ? 8 : 4;
 
         return (
             <div key={`${section.id}-${visibleIndex}`} className="field-item-wrapper" style={{ background: editable ? '#fcfcfd' : '#f8fafc', padding: '1.25rem', borderRadius: '14px', border: editable ? '1px solid #e5e7eb' : '1px dashed #cbd5e1' }}>
@@ -2628,7 +2691,7 @@ const VisualEditor: React.FC = () => {
                         value={section.value || ''}
                         onChange={(e) => handleSectionChange(pageIdx, section.id, 'value', e.target.value)}
                         disabled={!editableValue}
-                        rows={4}
+                        rows={textAreaRows}
                         style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: '1.4', resize: 'vertical' }}
                     />
                 ) : (
@@ -2708,6 +2771,24 @@ const VisualEditor: React.FC = () => {
 
         const extraSections = displayedSections.filter((section) => !usedIds.has(section.id));
         if (extraSections.length > 0) groups.push({ title: 'Digər Sahələr', subtitle: 'Avtomatik qruplaşdırıla bilməyən sahələr', sections: extraSections });
+        return groups;
+    })();
+
+    const legalGroupedSections = (() => {
+        if (!currentPage?.id || !LEGAL_SECTION_GROUPS[currentPage.id]) return [];
+        const usedIds = new Set<string>();
+        const groups = LEGAL_SECTION_GROUPS[currentPage.id].map((group) => {
+            const sections = group.ids
+                .map((id) => displayedSections.find((section) => section.id === id))
+                .filter(Boolean) as Section[];
+            sections.forEach((section) => usedIds.add(section.id));
+            return { title: group.title, subtitle: group.subtitle, sections };
+        }).filter((group) => group.sections.length > 0);
+
+        const extraSections = displayedSections.filter((section) => !usedIds.has(section.id));
+        if (extraSections.length > 0) {
+            groups.push({ title: 'Digər Sahələr', subtitle: 'Avtomatik qruplaşdırıla bilməyən əlavə sahələr', sections: extraSections });
+        }
         return groups;
     })();
 
@@ -4369,6 +4450,20 @@ const VisualEditor: React.FC = () => {
                                                 </div>
                                             ) : currentPage?.id === 'contactpage' ? (
                                                 contactGroupedSections.map((group) => (
+                                                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', padding: '12px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', padding: '4px 2px 8px 2px', borderBottom: '1px solid #e2e8f0' }}>
+                                                            <div style={{ fontSize: '12px', color: '#334155', fontWeight: 900, textTransform: 'uppercase' }}>
+                                                                {group.title}
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
+                                                                {group.subtitle}
+                                                            </div>
+                                                        </div>
+                                                        {group.sections.map((section, index) => renderTextSectionCard(section, index))}
+                                                    </div>
+                                                ))
+                                            ) : (currentPage?.id === 'privacypolicypage' || currentPage?.id === 'termsofservicepage') ? (
+                                                legalGroupedSections.map((group) => (
                                                     <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', padding: '12px' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', padding: '4px 2px 8px 2px', borderBottom: '1px solid #e2e8f0' }}>
                                                             <div style={{ fontSize: '12px', color: '#334155', fontWeight: 900, textTransform: 'uppercase' }}>
