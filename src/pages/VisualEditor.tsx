@@ -98,6 +98,7 @@ const QUILL_MODULES = {
 };
 
 const ICON_PRESETS = ['Shield', 'Users', 'Leaf', 'Zap', 'Target', 'Globe', 'Star', 'Flag'];
+const RULE_TAB_ICON_PRESETS = ['Info', 'Settings', 'ShieldAlert', 'Leaf', 'FileText'];
 
 const bbcodeToHtmlForEditor = (raw: string) => {
     if (!raw) return '';
@@ -234,6 +235,9 @@ const shouldSkipSectionInEditor = (section: Section) => {
 };
 
 const PARTNER_KEY_REGEX = /^PARTNER_(\d+)_(NAME|TAG|ICON|USE_IMAGE|IMAGE_ID)$/;
+const RULE_TAB_FIELD_REGEX = /^RULE_TAB_(\d+)_(ID|TITLE|ICON)$/;
+const RULE_TAB_ITEM_FIELD_REGEX = /^RULE_TAB_(\d+)_ITEM_(\d+)_(TITLE|DESC)$/;
+const RULE_TAB_SECTION_REGEX = /^RULE_TAB_\d+_(?:ID|TITLE|ICON|ITEM_\d+_(?:TITLE|DESC))$/;
 type PartnerField = 'name' | 'tag' | 'icon' | 'useImage' | 'imageId';
 type PartnerRow = {
     index: number;
@@ -242,6 +246,18 @@ type PartnerRow = {
     icon: string;
     useImage: string;
     imageId: string;
+};
+type RuleTabItemRow = {
+    index: number;
+    title: string;
+    desc: string;
+};
+type RuleTabRow = {
+    index: number;
+    id: string;
+    title: string;
+    icon: string;
+    items: RuleTabItemRow[];
 };
 
 const toPartnerField = (token: string): PartnerField | null => {
@@ -634,6 +650,82 @@ const VisualEditor: React.FC = () => {
                         { id: 'RACE_IMAGE_ALT', label: 'Növbəti Yarış Görsel Alt', value: 'Next Race' }
                     ]);
                 };
+                const ensureRulesDefaults = (page: PageContent) => {
+                    const sections = page.sections || [];
+                    if (sections.some((s) => RULE_TAB_SECTION_REGEX.test(s.id))) {
+                        page.sections = sections;
+                        return;
+                    }
+
+                    const pickLegacyValue = (key: string, fallback: string) =>
+                        (sections.find((s) => s.id === key)?.value || fallback).trim() || fallback;
+
+                    const defaultRows: RuleTabRow[] = [
+                        {
+                            index: 1,
+                            id: 'pilot',
+                            title: pickLegacyValue('RULES_PILOT_TITLE', 'PİLOT PROTOKOLU'),
+                            icon: 'Info',
+                            items: [
+                                { index: 1, title: pickLegacyValue('RULES_PILOT_SUB1', 'İSTİFADƏÇİ ÖHDƏLİKLƏRİ'), desc: pickLegacyValue('RULES_PILOT_DESC1', 'HƏR BİR İŞTİRAKÇI FEDERASİYANIN MÜƏYYƏN ETDİYİ BÜTÜN TEXNİKİ VƏ ETİK NORMALARI QEYD-ŞƏRTSİZ QƏBUL EDİR.') },
+                                { index: 2, title: pickLegacyValue('RULES_PILOT_SUB2', 'DİSKVALİFİKASİYA'), desc: pickLegacyValue('RULES_PILOT_DESC2', 'PROTOKOLDAN KƏNARA ÇIXMAQ VƏ YA HAKİM QƏRARLARINA ETİRAZ ETMƏK DƏRHAL DİSKVALİFİKASİYA İLƏ NƏTİCƏLƏNƏ BİLƏR.') },
+                                { index: 3, title: pickLegacyValue('RULES_PILOT_SUB3', 'TEXNİKİ TƏLƏBLƏR'), desc: pickLegacyValue('RULES_PILOT_DESC3', 'BÜTÜN AVADANLIQLAR YARIŞDAN 24 SAAT ƏVVƏL TEXNİKİ KOMİSSİYA TƏRƏFİNDƏN YOXLANILMALI VƏ TƏHLÜKƏSİZLİK SERTİFİKATI İLƏ TƏMİN EDİLMƏLİDİR.') }
+                            ]
+                        },
+                        {
+                            index: 2,
+                            id: 'technical',
+                            title: pickLegacyValue('RULES_TECH_TITLE', 'TEXNİKİ NORMARTİVLƏR'),
+                            icon: 'Settings',
+                            items: [
+                                { index: 1, title: pickLegacyValue('RULES_TECH_SUB1', 'TƏKƏR ÖLÇÜLƏRİ'), desc: pickLegacyValue('RULES_TECH_DESC1', 'PRO CLASS ÜÇÜN MAKSİMUM TƏKƏR ÖLÇÜSÜ 37 DÜYM, AMATEUR CLASS ÜÇÜN İSƏ 33 DÜYM OLARAQ MÜƏYYƏN EDİLMİŞDİR.') },
+                                { index: 2, title: pickLegacyValue('RULES_TECH_SUB2', 'MÜHƏRRİK GÜCÜ'), desc: pickLegacyValue('RULES_TECH_DESC2', 'MÜHƏRRİK ÜZƏRİNDƏ APARILAN MODİFİKASİYALAR KATEQORİYA ÜZRƏ LİMİTLƏRİ AŞMAMALIDIR. TURBO SİSTEMLƏRİ YALNIZ XÜSUSİ KLASLARDA İCAZƏLİDİR.') },
+                                { index: 3, title: pickLegacyValue('RULES_TECH_SUB3', 'ASQI SİSTEMİ'), desc: pickLegacyValue('RULES_TECH_DESC3', 'AVTOMOBİLİN KLİRENSİ (YERDƏN HÜNDÜRLÜYÜ) VƏ ASQI ARTIKULYASİYASI TƏHLÜKƏSİZLİK STANDARTLARINA UYĞUN OLMALIDIR.') }
+                            ]
+                        },
+                        {
+                            index: 3,
+                            id: 'safety',
+                            title: pickLegacyValue('RULES_SAFETY_TITLE', 'TƏHLÜKƏSİZLİK QAYDALARI'),
+                            icon: 'ShieldAlert',
+                            items: [
+                                { index: 1, title: pickLegacyValue('RULES_SAFETY_SUB1', 'KARKAS TƏLƏBİ'), desc: pickLegacyValue('RULES_SAFETY_DESC1', 'BÜTÜN AÇIQ VƏ YA MODİFİKASİYA OLUNMUŞ AVTOMOBİLLƏRDƏ FIA STANDARTLARINA UYĞUN TƏHLÜKƏSİZLİK KARKASI (ROLL CAGE) MƏCBURİDİR.') },
+                                { index: 2, title: pickLegacyValue('RULES_SAFETY_SUB2', 'YANĞIN SÖNDÜRMƏ'), desc: pickLegacyValue('RULES_SAFETY_DESC2', 'HƏR BİR AVTOMOBİLDƏ ƏN AZI 2 KİLOQRAMLIQ, ASAN ƏLÇATAN YERDƏ YERLƏŞƏN YANĞINSÖNDÜRƏN BALON OLMALIDIR.') },
+                                { index: 3, title: pickLegacyValue('RULES_SAFETY_SUB3', 'KƏMƏR VƏ DƏBİLQƏ'), desc: pickLegacyValue('RULES_SAFETY_DESC3', '5 NÖQTƏLİ TƏHLÜKƏSİZLİK KƏMƏRLƏRİ VƏ SERTİFİKATLI KASKALARIN (DƏBİLQƏLƏRİN) İSTİFADƏSİ BÜTÜN MƏRHƏLƏLƏRDƏ MƏCBURİDİR.') }
+                            ]
+                        },
+                        {
+                            index: 4,
+                            id: 'eco',
+                            title: pickLegacyValue('RULES_ECO_TITLE', 'EKOLOJİ MƏSULİYYƏT'),
+                            icon: 'Leaf',
+                            items: [
+                                { index: 1, title: pickLegacyValue('RULES_ECO_SUB1', 'TULLANTILARIN İDARƏ EDİLMƏSİ'), desc: pickLegacyValue('RULES_ECO_DESC1', 'YARIŞ ƏRAZİSİNDƏ VƏ TRASDA HƏR HANSI BİR TULLANTININ ATILMASI QƏTİ QADAĞANDIR. İŞTİRAKÇILAR \"LEAVE NO TRACE\" PRİNSİPİNƏ ƏMƏL ETMƏLİDİR.') },
+                                { index: 2, title: pickLegacyValue('RULES_ECO_SUB2', 'MAYE SIZMALARI'), desc: pickLegacyValue('RULES_ECO_DESC2', 'AVTOMOBİLDƏN YAĞ VƏ YA SOYUDUCU MAYE SIZMASI OLDUĞU TƏQDİRDƏ PİLOT DƏRHAL DAYANMALI VƏ ƏRAZİNİN ÇİRKLƏNMƏSİNİN QARŞISINI ALMALIDIR.') },
+                                { index: 3, title: pickLegacyValue('RULES_ECO_SUB3', 'MARŞRUTDAN KƏNARA ÇIXMAMAQ'), desc: pickLegacyValue('RULES_ECO_DESC3', 'TƏBİİ ÖRTÜYÜ QORUMAQ MƏQSƏDİ İLƏ MÜƏYYƏN OLUNMUŞ TRASDANKƏNAR SÜRÜŞLƏR VƏ YA YAŞIL SAHƏLƏRƏ ZƏRƏR VERMƏK QADAĞANDIR.') }
+                            ]
+                        }
+                    ];
+
+                    const dynamicSections: Section[] = [];
+                    defaultRows.forEach((row, rowIndex) => {
+                        const tabNo = rowIndex + 1;
+                        dynamicSections.push(
+                            { id: `RULE_TAB_${tabNo}_ID`, type: 'text', label: `Qayda Sekməsi ${tabNo} ID`, value: row.id },
+                            { id: `RULE_TAB_${tabNo}_TITLE`, type: 'text', label: `Qayda Sekməsi ${tabNo} Başlıq`, value: row.title },
+                            { id: `RULE_TAB_${tabNo}_ICON`, type: 'text', label: `Qayda Sekməsi ${tabNo} İkon`, value: row.icon }
+                        );
+                        row.items.forEach((item, itemIndex) => {
+                            const itemNo = itemIndex + 1;
+                            dynamicSections.push(
+                                { id: `RULE_TAB_${tabNo}_ITEM_${itemNo}_TITLE`, type: 'text', label: `Sekmə ${tabNo} Maddə ${itemNo} Başlıq`, value: item.title },
+                                { id: `RULE_TAB_${tabNo}_ITEM_${itemNo}_DESC`, type: 'text', label: `Sekmə ${tabNo} Maddə ${itemNo} Təsvir`, value: item.desc }
+                            );
+                        });
+                    });
+
+                    page.sections = [...sections, ...dynamicSections];
+                };
 
                 defaultIds.forEach(id => {
                     const found = updatedContent.find(p => p.id === id);
@@ -660,6 +752,8 @@ const VisualEditor: React.FC = () => {
                         ensureCategoryLeaderDefaults(found);
                     } else if (id === 'nextrace') {
                         ensureNextRaceDefaults(found);
+                    } else if (id === 'rulespage') {
+                        ensureRulesDefaults(found);
                     }
                 });
 
@@ -679,6 +773,8 @@ const VisualEditor: React.FC = () => {
                 if (categoryLeadersPage) ensureCategoryLeaderDefaults(categoryLeadersPage);
                 const nextRacePage = updatedContent.find(p => p.id === 'nextrace');
                 if (nextRacePage) ensureNextRaceDefaults(nextRacePage);
+                const rulesPage = updatedContent.find(p => p.id === 'rulespage');
+                if (rulesPage) ensureRulesDefaults(rulesPage);
 
                 const defaultRank = new Map(defaultIds.map((id, idx) => [id, idx]));
                 updatedContent.sort((a, b) => {
@@ -1166,6 +1262,180 @@ const VisualEditor: React.FC = () => {
         rows[target] = temp;
         const normalized = rows.map((r, i) => ({ ...r, index: i + 1, imageId: r.imageId || `partner-image-${i + 1}` }));
         rewritePartnerRows(normalized);
+    };
+
+    const normalizeRuleTabSlug = (value: string, fallback: string) => {
+        const token = normalizePlainText(value || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        return token || fallback;
+    };
+
+    const getRulesTabRows = (page: PageContent | undefined): RuleTabRow[] => {
+        if (!page || page.id !== 'rulespage') return [];
+
+        const tabs = new Map<number, { id: string; title: string; icon: string; items: Map<number, { title: string; desc: string }> }>();
+        (page.sections || []).forEach((section) => {
+            const tabMatch = section.id.match(RULE_TAB_FIELD_REGEX);
+            if (tabMatch) {
+                const tabNo = Number(tabMatch[1]);
+                const field = tabMatch[2];
+                const current = tabs.get(tabNo) || {
+                    id: `tab-${tabNo}`,
+                    title: '',
+                    icon: 'Info',
+                    items: new Map<number, { title: string; desc: string }>()
+                };
+                if (field === 'ID') current.id = section.value || `tab-${tabNo}`;
+                if (field === 'TITLE') current.title = section.value || '';
+                if (field === 'ICON') current.icon = section.value || 'Info';
+                tabs.set(tabNo, current);
+                return;
+            }
+
+            const itemMatch = section.id.match(RULE_TAB_ITEM_FIELD_REGEX);
+            if (itemMatch) {
+                const tabNo = Number(itemMatch[1]);
+                const itemNo = Number(itemMatch[2]);
+                const field = itemMatch[3];
+                const current = tabs.get(tabNo) || {
+                    id: `tab-${tabNo}`,
+                    title: '',
+                    icon: 'Info',
+                    items: new Map<number, { title: string; desc: string }>()
+                };
+                const item = current.items.get(itemNo) || { title: '', desc: '' };
+                if (field === 'TITLE') item.title = section.value || '';
+                if (field === 'DESC') item.desc = section.value || '';
+                current.items.set(itemNo, item);
+                tabs.set(tabNo, current);
+            }
+        });
+
+        return Array.from(tabs.entries())
+            .sort((a, b) => a[0] - b[0])
+            .map(([index, tab]) => ({
+                index,
+                id: tab.id || `tab-${index}`,
+                title: tab.title || '',
+                icon: tab.icon || 'Info',
+                items: Array.from(tab.items.entries())
+                    .sort((a, b) => a[0] - b[0])
+                    .map(([itemIndex, item]) => ({
+                        index: itemIndex,
+                        title: item.title || '',
+                        desc: item.desc || ''
+                    }))
+            }))
+            .filter((tab) => tab.title || tab.items.length > 0);
+    };
+
+    const rewriteRulesTabRows = (rows: RuleTabRow[], pageIdx: number = selectedPageIndex) => {
+        if (pageIdx < 0 || pageIdx >= pages.length) return;
+        const newPages = [...pages];
+        const page = newPages[pageIdx];
+        if (!page || page.id !== 'rulespage') return;
+
+        const restSections = (page.sections || []).filter((s) => !RULE_TAB_SECTION_REGEX.test(s.id));
+        const nextSections: Section[] = [];
+
+        rows.forEach((row, tabIndex) => {
+            const tabNo = tabIndex + 1;
+            const safeId = normalizeRuleTabSlug(row.id || row.title || '', `tab-${tabNo}`);
+            const safeTitle = normalizePlainText(row.title || `SEKME ${tabNo}`);
+            const safeIcon = RULE_TAB_ICON_PRESETS.includes(row.icon) ? row.icon : 'Info';
+
+            nextSections.push(
+                { id: `RULE_TAB_${tabNo}_ID`, type: 'text', label: `Qayda Sekməsi ${tabNo} ID`, value: safeId },
+                { id: `RULE_TAB_${tabNo}_TITLE`, type: 'text', label: `Qayda Sekməsi ${tabNo} Başlıq`, value: safeTitle },
+                { id: `RULE_TAB_${tabNo}_ICON`, type: 'text', label: `Qayda Sekməsi ${tabNo} İkon`, value: safeIcon }
+            );
+
+            (row.items || []).forEach((item, itemIndex) => {
+                const itemNo = itemIndex + 1;
+                nextSections.push(
+                    { id: `RULE_TAB_${tabNo}_ITEM_${itemNo}_TITLE`, type: 'text', label: `Sekmə ${tabNo} Maddə ${itemNo} Başlıq`, value: normalizePlainText(item.title || '') },
+                    { id: `RULE_TAB_${tabNo}_ITEM_${itemNo}_DESC`, type: 'text', label: `Sekmə ${tabNo} Maddə ${itemNo} Təsvir`, value: normalizePlainText(item.desc || '') }
+                );
+            });
+        });
+
+        page.sections = [...restSections, ...nextSections].map((section, idx) => ({ ...section, order: idx }));
+        setPages(newPages);
+    };
+
+    const addRulesTab = (pageIdx: number = selectedPageIndex) => {
+        const rows = getRulesTabRows(pages[pageIdx]);
+        const nextNo = rows.length + 1;
+        rows.push({
+            index: nextNo,
+            id: `tab-${nextNo}`,
+            title: `SEKME ${nextNo}`,
+            icon: 'Info',
+            items: [{ index: 1, title: 'YENİ MADDƏ', desc: 'Maddə təsviri...' }]
+        });
+        rewriteRulesTabRows(rows, pageIdx);
+        toast.success('Yeni sekmə əlavə edildi');
+    };
+
+    const removeRulesTab = (rowIdx: number, pageIdx: number = selectedPageIndex) => {
+        const rows = getRulesTabRows(pages[pageIdx]).filter((_, index) => index !== rowIdx);
+        rewriteRulesTabRows(rows, pageIdx);
+        toast.success('Sekmə silindi');
+    };
+
+    const moveRulesTab = (rowIdx: number, direction: 'up' | 'down', pageIdx: number = selectedPageIndex) => {
+        const rows = getRulesTabRows(pages[pageIdx]);
+        const target = direction === 'up' ? rowIdx - 1 : rowIdx + 1;
+        if (target < 0 || target >= rows.length) return;
+        const temp = rows[rowIdx];
+        rows[rowIdx] = rows[target];
+        rows[target] = temp;
+        rewriteRulesTabRows(rows, pageIdx);
+    };
+
+    const updateRulesTabField = (
+        rowIdx: number,
+        field: 'id' | 'title' | 'icon',
+        value: string,
+        pageIdx: number = selectedPageIndex
+    ) => {
+        const rows = getRulesTabRows(pages[pageIdx]);
+        if (!rows[rowIdx]) return;
+        rows[rowIdx] = { ...rows[rowIdx], [field]: value };
+        rewriteRulesTabRows(rows, pageIdx);
+    };
+
+    const addRulesTabItem = (rowIdx: number, pageIdx: number = selectedPageIndex) => {
+        const rows = getRulesTabRows(pages[pageIdx]);
+        if (!rows[rowIdx]) return;
+        const nextNo = (rows[rowIdx].items?.length || 0) + 1;
+        rows[rowIdx].items = [...(rows[rowIdx].items || []), { index: nextNo, title: `MADDƏ ${nextNo}`, desc: 'Maddə təsviri...' }];
+        rewriteRulesTabRows(rows, pageIdx);
+    };
+
+    const removeRulesTabItem = (rowIdx: number, itemIdx: number, pageIdx: number = selectedPageIndex) => {
+        const rows = getRulesTabRows(pages[pageIdx]);
+        if (!rows[rowIdx]) return;
+        rows[rowIdx].items = (rows[rowIdx].items || []).filter((_, index) => index !== itemIdx);
+        rewriteRulesTabRows(rows, pageIdx);
+    };
+
+    const updateRulesTabItemField = (
+        rowIdx: number,
+        itemIdx: number,
+        field: 'title' | 'desc',
+        value: string,
+        pageIdx: number = selectedPageIndex
+    ) => {
+        const rows = getRulesTabRows(pages[pageIdx]);
+        if (!rows[rowIdx] || !rows[rowIdx].items[itemIdx]) return;
+        rows[rowIdx].items[itemIdx] = {
+            ...rows[rowIdx].items[itemIdx],
+            [field]: value
+        };
+        rewriteRulesTabRows(rows, pageIdx);
     };
 
     const openImageSelector = (pageIdx: number, imgId: string) => {
@@ -1745,6 +2015,7 @@ const VisualEditor: React.FC = () => {
         if (shouldSkipSectionInEditor(s)) return false;
         if (currentPage?.id === 'about' && isStatSectionId(s.id)) return false;
         if (currentPage?.id === 'partners' && (PARTNER_KEY_REGEX.test(s.id) || s.id === 'SECTION_TITLE')) return false;
+        if (currentPage?.id === 'rulespage' && RULE_TAB_SECTION_REGEX.test(s.id)) return false;
         return !searchTerm ||
             s.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.value.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1776,6 +2047,7 @@ const VisualEditor: React.FC = () => {
         : [];
 
     const partnerRows = currentPage?.id === 'partners' ? getPartnerRows(currentPage) : [];
+    const rulesTabRows = currentPage?.id === 'rulespage' ? getRulesTabRows(currentPage) : [];
 
     const displayedImages = (currentPage?.images || []).filter(i => {
         return !searchTerm ||
@@ -2670,6 +2942,7 @@ const VisualEditor: React.FC = () => {
                                         .filter((section) => {
                                             if (!isSectionVisibleInAdmin(section) || shouldSkipSectionInEditor(section)) return false;
                                             if (page.id === 'about' && isStatSectionId(section.id)) return false;
+                                            if (page.id === 'rulespage' && RULE_TAB_SECTION_REGEX.test(section.id)) return false;
                                             return true;
                                         })
                                         .sort((a, b) => normalizeOrder(a.order, 0) - normalizeOrder(b.order, 0));
@@ -2691,6 +2964,7 @@ const VisualEditor: React.FC = () => {
                                                 .map(([suffix, data]) => ({ suffix, ...data }));
                                         })()
                                         : [];
+                                    const pageRuleTabs = page.id === 'rulespage' ? getRulesTabRows(page) : [];
 
                                     return (
                                         <div key={page.id} className="field-group">
@@ -2741,6 +3015,123 @@ const VisualEditor: React.FC = () => {
                                                                     </button>
                                                                 </div>
                                                             ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {page.id === 'rulespage' && (
+                                                    <div className="field-item-wrapper" style={{ position: 'relative', background: '#fcfcfd', padding: '1rem', borderRadius: '12px', border: '1px solid #f0f0f2' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 800 }}>
+                                                                Qaydalar Sekmələri
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                className="add-field-minimal"
+                                                                onClick={() => addRulesTab(pageIdx)}
+                                                            >
+                                                                <Plus size={14} /> Yeni Sekmə
+                                                            </button>
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                            {pageRuleTabs.map((row, rowIndex) => {
+                                                                const canMoveUp = rowIndex > 0;
+                                                                const canMoveDown = rowIndex < pageRuleTabs.length - 1;
+                                                                return (
+                                                                    <div key={`rules-tab-group-${row.index}-${row.id}`} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px', background: '#fff' }}>
+                                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 160px auto', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={row.title}
+                                                                                onChange={(e) => updateRulesTabField(rowIndex, 'title', e.target.value, pageIdx)}
+                                                                                placeholder="Sekmə başlığı"
+                                                                                style={{ padding: '9px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: 700 }}
+                                                                            />
+                                                                            <input
+                                                                                type="text"
+                                                                                value={row.id}
+                                                                                onChange={(e) => updateRulesTabField(rowIndex, 'id', e.target.value, pageIdx)}
+                                                                                placeholder="Sekmə ID"
+                                                                                style={{ padding: '9px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
+                                                                            />
+                                                                            <select
+                                                                                value={row.icon}
+                                                                                onChange={(e) => updateRulesTabField(rowIndex, 'icon', e.target.value, pageIdx)}
+                                                                                style={{ padding: '9px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
+                                                                            >
+                                                                                {RULE_TAB_ICON_PRESETS.map((opt) => (
+                                                                                    <option key={opt} value={opt}>{opt}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    title="Yuxarı"
+                                                                                    onClick={() => moveRulesTab(rowIndex, 'up', pageIdx)}
+                                                                                    disabled={!canMoveUp}
+                                                                                    style={{ width: '30px', height: '30px', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '8px', color: canMoveUp ? '#334155' : '#cbd5e1' }}
+                                                                                >
+                                                                                    <ChevronUp size={14} />
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    title="Aşağı"
+                                                                                    onClick={() => moveRulesTab(rowIndex, 'down', pageIdx)}
+                                                                                    disabled={!canMoveDown}
+                                                                                    style={{ width: '30px', height: '30px', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '8px', color: canMoveDown ? '#334155' : '#cbd5e1' }}
+                                                                                >
+                                                                                    <ChevronDown size={14} />
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    title="Sekməni sil"
+                                                                                    onClick={() => removeRulesTab(rowIndex, pageIdx)}
+                                                                                    style={{ width: '30px', height: '30px', border: '1px solid #fee2e2', background: '#fff', borderRadius: '8px', color: '#ef4444' }}
+                                                                                >
+                                                                                    <Trash2 size={14} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                            {(row.items || []).map((item, itemIndex) => (
+                                                                                <div key={`rules-tab-item-group-${row.index}-${item.index}`} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px' }}>
+                                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', marginBottom: '8px' }}>
+                                                                                        <input
+                                                                                            type="text"
+                                                                                            value={item.title}
+                                                                                            onChange={(e) => updateRulesTabItemField(rowIndex, itemIndex, 'title', e.target.value, pageIdx)}
+                                                                                            placeholder="Maddə başlığı"
+                                                                                            style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: 700 }}
+                                                                                        />
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            title="Maddəni sil"
+                                                                                            onClick={() => removeRulesTabItem(rowIndex, itemIndex, pageIdx)}
+                                                                                            style={{ width: '30px', height: '30px', border: '1px solid #fee2e2', background: '#fff', borderRadius: '8px', color: '#ef4444' }}
+                                                                                        >
+                                                                                            <Trash2 size={14} />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    <textarea
+                                                                                        rows={3}
+                                                                                        value={item.desc}
+                                                                                        onChange={(e) => updateRulesTabItemField(rowIndex, itemIndex, 'desc', e.target.value, pageIdx)}
+                                                                                        placeholder="Maddə təsviri"
+                                                                                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', lineHeight: 1.4, resize: 'vertical' }}
+                                                                                    />
+                                                                                </div>
+                                                                            ))}
+                                                                            <button
+                                                                                type="button"
+                                                                                className="add-field-minimal"
+                                                                                onClick={() => addRulesTabItem(rowIndex, pageIdx)}
+                                                                            >
+                                                                                <Plus size={14} /> Maddə Əlavə Et
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 )}
@@ -3113,6 +3504,110 @@ const VisualEditor: React.FC = () => {
                                                                     placeholder="Görsel ID (Məs: partner-image-1)"
                                                                     style={{ padding: '9px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
                                                                 />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {currentPage.id === 'rulespage' && (
+                                        <div className="field-group">
+                                            <div className="field-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <label><Layout size={16} /> Qaydalar Sekmələri</label>
+                                                <button className="add-field-minimal" onClick={() => addRulesTab()}>
+                                                    <Plus size={14} /> Yeni Sekmə
+                                                </button>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                {rulesTabRows.map((row, rowIndex) => {
+                                                    const canMoveUp = rowIndex > 0;
+                                                    const canMoveDown = rowIndex < rulesTabRows.length - 1;
+                                                    return (
+                                                        <div key={`rules-tab-${row.index}-${row.id}`} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px', background: '#fff' }}>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 170px auto', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                                                                <input
+                                                                    type="text"
+                                                                    value={row.title}
+                                                                    onChange={(e) => updateRulesTabField(rowIndex, 'title', e.target.value)}
+                                                                    placeholder="Sekmə başlığı"
+                                                                    style={{ padding: '9px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: 700 }}
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    value={row.id}
+                                                                    onChange={(e) => updateRulesTabField(rowIndex, 'id', e.target.value)}
+                                                                    placeholder="Sekmə ID"
+                                                                    style={{ padding: '9px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
+                                                                />
+                                                                <select
+                                                                    value={row.icon}
+                                                                    onChange={(e) => updateRulesTabField(rowIndex, 'icon', e.target.value)}
+                                                                    style={{ padding: '9px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
+                                                                >
+                                                                    {RULE_TAB_ICON_PRESETS.map((opt) => (
+                                                                        <option key={opt} value={opt}>{opt}</option>
+                                                                    ))}
+                                                                </select>
+                                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                                    <button
+                                                                        title="Yuxarı"
+                                                                        onClick={() => moveRulesTab(rowIndex, 'up')}
+                                                                        disabled={!canMoveUp}
+                                                                        style={{ width: '30px', height: '30px', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '8px', color: canMoveUp ? '#334155' : '#cbd5e1' }}
+                                                                    >
+                                                                        <ChevronUp size={14} />
+                                                                    </button>
+                                                                    <button
+                                                                        title="Aşağı"
+                                                                        onClick={() => moveRulesTab(rowIndex, 'down')}
+                                                                        disabled={!canMoveDown}
+                                                                        style={{ width: '30px', height: '30px', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '8px', color: canMoveDown ? '#334155' : '#cbd5e1' }}
+                                                                    >
+                                                                        <ChevronDown size={14} />
+                                                                    </button>
+                                                                    <button
+                                                                        title="Sekməni sil"
+                                                                        onClick={() => removeRulesTab(rowIndex)}
+                                                                        style={{ width: '30px', height: '30px', border: '1px solid #fee2e2', background: '#fff', borderRadius: '8px', color: '#ef4444' }}
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                {(row.items || []).map((item, itemIndex) => (
+                                                                    <div key={`rules-item-${row.index}-${item.index}`} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px' }}>
+                                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', marginBottom: '8px' }}>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={item.title}
+                                                                                onChange={(e) => updateRulesTabItemField(rowIndex, itemIndex, 'title', e.target.value)}
+                                                                                placeholder="Maddə başlığı"
+                                                                                style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: 700 }}
+                                                                            />
+                                                                            <button
+                                                                                title="Maddəni sil"
+                                                                                onClick={() => removeRulesTabItem(rowIndex, itemIndex)}
+                                                                                style={{ width: '30px', height: '30px', border: '1px solid #fee2e2', background: '#fff', borderRadius: '8px', color: '#ef4444' }}
+                                                                            >
+                                                                                <Trash2 size={14} />
+                                                                            </button>
+                                                                        </div>
+                                                                        <textarea
+                                                                            rows={3}
+                                                                            value={item.desc}
+                                                                            onChange={(e) => updateRulesTabItemField(rowIndex, itemIndex, 'desc', e.target.value)}
+                                                                            placeholder="Maddə təsviri"
+                                                                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', lineHeight: 1.4, resize: 'vertical' }}
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                                <button className="add-field-minimal" onClick={() => addRulesTabItem(rowIndex)}>
+                                                                    <Plus size={14} /> Maddə Əlavə Et
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, FileText, Download, ShieldAlert, Settings, Info, Leaf } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { bbcodeToHtml } from '../utils/bbcode';
@@ -15,9 +15,73 @@ interface RuleSection {
 
 const RulesPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>('pilot');
-  const { getText, getUrl } = useSiteContent('rulespage');
+  const { getText, getUrl, getPage } = useSiteContent('rulespage');
+  const rulesPage = getPage('rulespage');
 
-  const ruleSections: RuleSection[] = [
+  const ruleSections: RuleSection[] = useMemo(() => {
+    const tabField = /^RULE_TAB_(\d+)_(ID|TITLE|ICON)$/;
+    const itemField = /^RULE_TAB_(\d+)_ITEM_(\d+)_(TITLE|DESC)$/;
+
+    const tabsMap = new Map<number, { id?: string; title?: string; icon?: string; items: Map<number, { subtitle?: string; description?: string }> }>();
+    (rulesPage?.sections || []).forEach((section) => {
+      const tabMatch = section.id.match(tabField);
+      if (tabMatch) {
+        const tabNo = Number(tabMatch[1]);
+        const field = tabMatch[2];
+        const current = tabsMap.get(tabNo) || { items: new Map<number, { subtitle?: string; description?: string }>() };
+        if (field === 'ID') current.id = section.value || '';
+        if (field === 'TITLE') current.title = section.value || '';
+        if (field === 'ICON') current.icon = section.value || '';
+        tabsMap.set(tabNo, current);
+        return;
+      }
+
+      const itemMatch = section.id.match(itemField);
+      if (itemMatch) {
+        const tabNo = Number(itemMatch[1]);
+        const itemNo = Number(itemMatch[2]);
+        const field = itemMatch[3];
+        const current = tabsMap.get(tabNo) || { items: new Map<number, { subtitle?: string; description?: string }>() };
+        const item = current.items.get(itemNo) || {};
+        if (field === 'TITLE') item.subtitle = section.value || '';
+        if (field === 'DESC') item.description = section.value || '';
+        current.items.set(itemNo, item);
+        tabsMap.set(tabNo, current);
+      }
+    });
+
+    const iconByName: Record<string, React.ReactNode> = {
+      Info: <Info size={18} />,
+      Settings: <Settings size={18} />,
+      ShieldAlert: <ShieldAlert size={18} />,
+      Leaf: <Leaf size={18} />,
+      FileText: <FileText size={18} />
+    };
+    const toIcon = (name?: string) => iconByName[name || ''] || <Info size={18} />;
+
+    const dynamicTabs = Array.from(tabsMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([index, tab]) => {
+        const rules = Array.from(tab.items.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([, item]) => ({
+            subtitle: item.subtitle || '',
+            description: item.description || ''
+          }))
+          .filter((item) => item.subtitle || item.description);
+
+        return {
+          id: tab.id || `tab-${index}`,
+          title: tab.title || '',
+          icon: toIcon(tab.icon),
+          rules
+        };
+      })
+      .filter((tab) => tab.title && tab.rules.length > 0);
+
+    if (dynamicTabs.length > 0) return dynamicTabs;
+
+    return [
     {
       id: 'pilot',
       title: getText('RULES_PILOT_TITLE', 'PİLOT PROTOKOLU'),
@@ -94,7 +158,15 @@ const RulesPage: React.FC = () => {
         }
       ]
     }
-  ];
+    ];
+  }, [getText, rulesPage?.sections]);
+
+  useEffect(() => {
+    if (!ruleSections.length) return;
+    if (!ruleSections.some((section) => section.id === activeSection)) {
+      setActiveSection(ruleSections[0].id);
+    }
+  }, [activeSection, ruleSections]);
 
   const currentSection = ruleSections.find(s => s.id === activeSection) || ruleSections[0];
 
