@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Inbox, CheckCircle, Clock, Trash2, User, Phone, FileText, ChevronRight } from 'lucide-react';
+import { Inbox, CheckCircle, Clock, Trash2, User, Phone, FileText, ChevronRight, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './ApplicationsManager.css';
 
@@ -83,6 +83,74 @@ const ApplicationsManager: React.FC = () => {
         return true;
     });
 
+    const parseContentForExport = (rawContent: string) => {
+        const text = String(rawContent || '').trim();
+        if (!text) return { contentText: '', parsedFields: {} as Record<string, string> };
+
+        try {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed)) {
+                return {
+                    contentText: parsed.map((item) => String(item ?? '')).join(' | '),
+                    parsedFields: { content_json: JSON.stringify(parsed) }
+                };
+            }
+            if (parsed && typeof parsed === 'object') {
+                const parsedFields: Record<string, string> = {};
+                for (const [key, value] of Object.entries(parsed)) {
+                    parsedFields[`content_${String(key).trim()}`] = String(value ?? '');
+                }
+                return {
+                    contentText: Object.entries(parsed).map(([key, value]) => `${key}: ${String(value ?? '')}`).join(' | '),
+                    parsedFields
+                };
+            }
+
+            return { contentText: String(parsed), parsedFields: {} as Record<string, string> };
+        } catch {
+            return { contentText: text, parsedFields: {} as Record<string, string> };
+        }
+    };
+
+    const exportToXlsx = async () => {
+        if (!filteredApps.length) {
+            toast.error('Export üçün müraciət tapılmadı');
+            return;
+        }
+
+        try {
+            const XLSX = await import('xlsx');
+            const rows = filteredApps.map((app) => {
+                const { contentText, parsedFields } = parseContentForExport(app.content);
+                return {
+                    id: app.id,
+                    status: app.status,
+                    name: app.name,
+                    contact: app.contact,
+                    type: app.type,
+                    created_at: app.created_at,
+                    content: contentText,
+                    ...parsedFields
+                };
+            });
+
+            const headers = Array.from(rows.reduce((acc, row) => {
+                Object.keys(row).forEach((key) => acc.add(key));
+                return acc;
+            }, new Set<string>()));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Applications');
+            const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+            XLSX.writeFile(workbook, `applications-${filter}-${stamp}.xlsx`);
+            toast.success('XLSX faylı yükləndi');
+        } catch (error) {
+            console.error(error);
+            toast.error('XLSX export zamanı xəta baş verdi');
+        }
+    };
+
     const renderContent = (content: string) => {
         try {
             const data = JSON.parse(content);
@@ -115,6 +183,10 @@ const ApplicationsManager: React.FC = () => {
                     <button className={filter === 'unread' ? 'active' : ''} onClick={() => setFilter('unread')}>Oxunmamış</button>
                     <button className={filter === 'read' ? 'active' : ''} onClick={() => setFilter('read')}>Oxunmuş</button>
                 </div>
+                <button className="btn-export" onClick={exportToXlsx}>
+                    <Download size={16} />
+                    XLSX Export
+                </button>
             </div>
 
             <div className="manager-body">

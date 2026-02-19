@@ -10,8 +10,10 @@
 
 .manager-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
     margin-bottom: 2rem;
 }
 
@@ -48,6 +50,23 @@
     background: #ffffff;
     color: #3b82f6;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.9rem;
+    border-radius: 0.5rem;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition: all 0.2s;
+}
+
+.btn-export:hover {
+    background: #1e293b;
 }
 
 .manager-body {
