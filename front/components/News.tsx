@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Calendar } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
-import { bbcodeToHtml } from '../utils/bbcode';
 
 interface NewsItem {
   id: number;
@@ -20,6 +19,26 @@ const normalizeRichTextSpacing = (value: unknown) =>
   String(value ?? '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/\u00a0/g, ' ');
+
+const toPlainText = (value: unknown) =>
+  String(value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\[[^\]]+\]/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getPreviewText = (value: unknown, limit: number) => {
+  const plain = toPlainText(value);
+  if (!plain) return '';
+  return plain.length > limit ? `${plain.slice(0, limit - 1).trimEnd()}…` : plain;
+};
 
 const News: React.FC<NewsProps> = ({ onViewChange }) => {
   const { getText } = useSiteContent('news');
@@ -58,7 +77,7 @@ const News: React.FC<NewsProps> = ({ onViewChange }) => {
             title: item.title,
             date: item.date,
             img: item.img,
-            description: normalizeRichTextSpacing(item.description)
+            description: getPreviewText(normalizeRichTextSpacing(item.description), 280)
           }));
 
           setNewsData(mapped);
@@ -114,10 +133,9 @@ const News: React.FC<NewsProps> = ({ onViewChange }) => {
               <h3 className="text-4xl md:text-7xl font-black italic text-white leading-none tracking-tighter mb-5 uppercase">
                 {mainNews.title}
               </h3>
-              <div
-                className="text-gray-400 font-bold italic text-xs md:text-base uppercase tracking-wide max-w-xl quill-content break-words overflow-hidden [overflow-wrap:anywhere] [&_*]:max-w-full [&_*]:whitespace-normal [&_*]:break-words [&_*]:[overflow-wrap:anywhere]"
-                dangerouslySetInnerHTML={{ __html: bbcodeToHtml(mainNews.description) }}
-              />
+              <p className="text-gray-400 font-bold italic text-xs md:text-base uppercase tracking-wide max-w-xl break-words [overflow-wrap:anywhere] line-clamp-4">
+                {mainNews.description}
+              </p>
             </div>
           </div>
 
@@ -142,10 +160,9 @@ const News: React.FC<NewsProps> = ({ onViewChange }) => {
                   <h4 className="text-3xl font-black italic text-white uppercase leading-tight mb-2 group-hover:text-[#FF4D00] transition-colors tracking-tighter line-clamp-1">
                     {news.title}
                   </h4>
-                  <div
-                    className="text-gray-500 text-[10px] font-bold italic uppercase tracking-wider quill-content break-words overflow-hidden [overflow-wrap:anywhere] [&_*]:max-w-full [&_*]:whitespace-normal [&_*]:break-words [&_*]:[overflow-wrap:anywhere]"
-                    dangerouslySetInnerHTML={{ __html: bbcodeToHtml(news.description) }}
-                  />
+                  <p className="text-gray-500 text-[10px] font-bold italic uppercase tracking-wider break-words [overflow-wrap:anywhere] line-clamp-3">
+                    {news.description}
+                  </p>
                 </div>
               </div>
             ))}

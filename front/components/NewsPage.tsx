@@ -310,7 +310,7 @@ const NewsPage: React.FC = () => {
                   <h4 className="text-3xl font-black italic text-white uppercase leading-tight mb-6 group-hover:text-[#FF4D00] transition-colors tracking-tighter break-words [overflow-wrap:anywhere]">
                     {news.title}
                   </h4>
-                  <p className="text-gray-500 font-bold italic text-[10px] uppercase leading-relaxed mb-10 tracking-widest break-words [overflow-wrap:anywhere]">
+                  <p className="text-gray-500 font-bold italic text-[10px] uppercase leading-relaxed mb-10 tracking-widest break-words [overflow-wrap:anywhere] line-clamp-4">
                     {news.desc}
                   </p>
                   <button className="flex items-center gap-3 text-[#FF4D00] font-black italic text-xs hover:translate-x-2 transition-all uppercase tracking-widest">
