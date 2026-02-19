@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { PlayCircle, Image as ImageIcon, Video, ArrowRight, Zap, Maximize2, Calendar, X } from 'lucide-react';
+import { PlayCircle, Image as ImageIcon, Video, ArrowRight, ArrowLeft, Zap, Maximize2, Calendar, X } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 
 import CsPlayer from './CsPlayer';
@@ -104,6 +104,8 @@ const GalleryPage: React.FC = () => {
 
     return items;
   }, [preparedPhotos]);
+
+  const [selectedAlbum, setSelectedAlbum] = useState<{ albumTitle: string; photos: PreparedPhoto[] } | null>(null);
 
   const extractYoutubeId = (url: string) => {
     if (!url) return null;
@@ -318,7 +320,7 @@ const GalleryPage: React.FC = () => {
         {/* Tab Selection */}
         <div className="bg-white/5 p-1 rounded-sm flex items-center border border-white/10 shadow-xl self-end lg:self-center">
           <button
-            onClick={() => setActiveType('photos')}
+            onClick={() => { setActiveType('photos'); setSelectedAlbum(null); }}
             className={`px-10 py-4 font-black italic text-sm uppercase tracking-widest transition-all flex items-center gap-3 ${activeType === 'photos' ? 'bg-[#FF4D00] text-black transform -skew-x-12 shadow-lg shadow-[#FF4D00]/20' : 'text-gray-500 hover:text-white'}`}
           >
             <span className={activeType === 'photos' ? 'transform skew-x-12 flex items-center gap-2' : 'flex items-center gap-2'}>
@@ -326,7 +328,7 @@ const GalleryPage: React.FC = () => {
             </span>
           </button>
           <button
-            onClick={() => setActiveType('videos')}
+            onClick={() => { setActiveType('videos'); setSelectedAlbum(null); }}
             className={`px-10 py-4 font-black italic text-sm uppercase tracking-widest transition-all flex items-center gap-3 ${activeType === 'videos' ? 'bg-[#FF4D00] text-black transform -skew-x-12 shadow-lg shadow-[#FF4D00]/20' : 'text-gray-500 hover:text-white'}`}
           >
             <span className={activeType === 'videos' ? 'transform skew-x-12 flex items-center gap-2' : 'flex items-center gap-2'}>
@@ -347,77 +349,109 @@ const GalleryPage: React.FC = () => {
               </div>
               <div className="relative">
                 <h3 className="text-3xl md:text-5xl font-black italic text-white uppercase tracking-tighter leading-none mb-2">
-                  {activeType === 'photos' ? getText('TAB_PHOTOS', 'FOTOLAR') : getText('TAB_VIDEOS', 'VİDEOLAR')}
+                  {selectedAlbum ? selectedAlbum.albumTitle : (activeType === 'photos' ? getText('TAB_PHOTOS', 'FOTOLAR') : getText('TAB_VIDEOS', 'VİDEOLAR'))}
                 </h3>
                 <div className="flex items-center gap-2 text-[#FF4D00] font-black italic text-[10px] uppercase tracking-[0.3em]">
                   <Zap size={14} /> {getText('DYNAMIC_COLLECTION', 'CANLI ARXİV // YENİLƏNƏN MƏZMUN')}
                 </div>
               </div>
             </div>
+            {selectedAlbum && (
+              <button
+                onClick={() => setSelectedAlbum(null)}
+                className="bg-[#FF4D00] text-black px-6 py-2 font-black italic text-[10px] uppercase tracking-widest transform -skew-x-12 flex items-center gap-2 hover:bg-white transition-all shadow-lg"
+              >
+                <span className="transform skew-x-12 flex items-center gap-2"><ArrowLeft size={14} /> {getText('BTN_BACK', 'GERİ QAYIT')}</span>
+              </button>
+            )}
             <p className="text-gray-600 font-black italic text-[10px] uppercase tracking-widest">
-              {getText('TOTAL_LABEL', 'TOPLAM')} {activeType === 'photos' ? preparedPhotos.length : dynamicVideos.length} {activeType === 'photos' ? getText('TYPE_PHOTO', 'FOTO') : getText('TYPE_VIDEO', 'VİDEO')}
+              {getText('TOTAL_LABEL', 'TOPLAM')} {activeType === 'photos' ? (selectedAlbum ? selectedAlbum.photos.length : preparedPhotos.length) : dynamicVideos.length} {activeType === 'photos' ? getText('TYPE_PHOTO', 'FOTO') : getText('TYPE_VIDEO', 'VİDEO')}
             </p>
           </div>
 
           {activeType === 'photos' ? (
             /* Photo Grid */
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-              {photoGridItems.length === 0 ? (
-                <div className="col-span-full py-20 text-center text-gray-500 font-black italic uppercase tracking-widest">
-                  {getText('NO_PHOTOS', 'HƏLƏ Kİ FOTO ƏLAVƏ EDİLMƏYİB')}
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 animate-in fade-in duration-500">
+              {selectedAlbum ? (
+                /* Album Detail View */
+                selectedAlbum.photos.map((photo, idx) => (
+                  <div
+                    key={photo.id}
+                    className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300"
+                    onClick={() => openPhotoPreview(selectedAlbum.photos, idx)}
+                  >
+                    <img
+                      src={photo.src}
+                      className="w-full h-full object-cover grayscale opacity-60 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
+                      alt={photo.title}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                      <p className="text-[10px] font-black italic uppercase text-white truncate drop-shadow-md">{photo.title}</p>
+                      <div className="flex justify-between items-center mt-1">
+                        <Maximize2 size={12} className="text-[#FF4D00]" />
+                      </div>
+                    </div>
+                  </div>
+                ))
               ) : (
-                photoGridItems.map((item) => {
-                  if (item.type === 'album') {
-                    const cover = item.photos[0];
+                /* Main Collection View */
+                photoGridItems.length === 0 ? (
+                  <div className="col-span-full py-20 text-center text-gray-500 font-black italic uppercase tracking-widest">
+                    {getText('NO_PHOTOS', 'HƏLƏ Kİ FOTO ƏLAVƏ EDİLMƏYİB')}
+                  </div>
+                ) : (
+                  photoGridItems.map((item) => {
+                    if (item.type === 'album') {
+                      const cover = item.photos[0];
+                      return (
+                        <div
+                          key={item.key}
+                          className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300 border border-[#FF4D00]/20"
+                          onClick={() => setSelectedAlbum({ albumTitle: item.albumTitle, photos: item.photos })}
+                        >
+                          <img
+                            src={cover.src}
+                            className="w-full h-full object-cover grayscale opacity-50 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
+                            alt={item.albumTitle}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-3">
+                            <p className="text-[9px] font-black italic uppercase tracking-[0.2em] text-[#FF4D00] mb-1">ALBOM</p>
+                            <p className="text-[10px] font-black italic uppercase text-white drop-shadow-md line-clamp-2">{item.albumTitle}</p>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-[9px] font-black italic uppercase tracking-wider text-gray-300">
+                                {item.photos.length} {getText('TYPE_PHOTO', 'FOTO')}
+                              </span>
+                              <ArrowRight size={12} className="text-[#FF4D00]" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const photoIndex = preparedPhotos.findIndex((photo) => photo.id === item.photo.id);
+                    const safeIndex = photoIndex >= 0 ? photoIndex : 0;
+
                     return (
                       <div
                         key={item.key}
-                        className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300 border border-[#FF4D00]/20"
-                        onClick={() => openPhotoPreview(item.photos, 0)}
+                        className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300"
+                        onClick={() => openPhotoPreview(preparedPhotos, safeIndex)}
                       >
                         <img
-                          src={cover.src}
-                          className="w-full h-full object-cover grayscale opacity-50 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
-                          alt={item.albumTitle}
+                          src={item.photo.src}
+                          className="w-full h-full object-cover grayscale opacity-60 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
+                          alt={item.photo.title}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-3">
-                          <p className="text-[9px] font-black italic uppercase tracking-[0.2em] text-[#FF4D00] mb-1">ALBOM</p>
-                          <p className="text-[10px] font-black italic uppercase text-white drop-shadow-md line-clamp-2">{item.albumTitle}</p>
-                          <div className="flex justify-between items-center mt-2">
-                            <span className="text-[9px] font-black italic uppercase tracking-wider text-gray-300">
-                              {item.photos.length} {getText('TYPE_PHOTO', 'FOTO')}
-                            </span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                          <p className="text-[10px] font-black italic uppercase text-white truncate drop-shadow-md">{item.photo.title}</p>
+                          <div className="flex justify-between items-center mt-1">
                             <Maximize2 size={12} className="text-[#FF4D00]" />
                           </div>
                         </div>
                       </div>
                     );
-                  }
-
-                  const photoIndex = preparedPhotos.findIndex((photo) => photo.id === item.photo.id);
-                  const safeIndex = photoIndex >= 0 ? photoIndex : 0;
-
-                  return (
-                    <div
-                      key={item.key}
-                      className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300"
-                      onClick={() => openPhotoPreview(preparedPhotos, safeIndex)}
-                    >
-                      <img
-                        src={item.photo.src}
-                        className="w-full h-full object-cover grayscale opacity-60 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
-                        alt={item.photo.title}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                        <p className="text-[10px] font-black italic uppercase text-white truncate drop-shadow-md">{item.photo.title}</p>
-                        <div className="flex justify-between items-center mt-1">
-                          <Maximize2 size={12} className="text-[#FF4D00]" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                  })
+                )
               )}
             </div>
           ) : (
