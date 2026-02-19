@@ -224,6 +224,12 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
     }
   };
 
+  const sanitizeFooterRuleLabel = (value: string) =>
+    (value || '')
+      .replace(/&lt;\/?g[^&]*&gt;/gi, '')
+      .replace(/<\/?g[^>]*>/gi, '')
+      .trim();
+
 
   const navigationLinks = [
     { name: getText('txt-ana-s-h-f-744', 'ANA SƏHİFƏ'), id: getUrl('txt-ana-s-h-f-744', 'home') as any, fallback: 'home' as const },
@@ -238,7 +244,7 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
   const rulesLinks = [
     { name: getText('txt-pi-lot-protokolu-31', 'PİLOT PROTOKOLU'), id: getUrl('txt-pi-lot-protokolu-31', 'rules') as any, fallback: 'rules' as const, ruleSection: 'pilot' },
     { name: getText('txt-texni-ki-normati-712', 'TEXNİKİ NORMATİVLƏR'), id: getUrl('txt-texni-ki-normati-712', 'rules') as any, fallback: 'rules' as const, ruleSection: 'technical' },
-    { name: getText('txt-t-hl-k-si-zli-k-q-121', 'TƏHLÜKƏSİZLİK QAYDALARI'), id: getUrl('txt-t-hl-k-si-zli-k-q-121', 'rules') as any, fallback: 'rules' as const, ruleSection: 'safety' },
+    { name: sanitizeFooterRuleLabel(getText('txt-t-hl-k-si-zli-k-q-121', 'TƏHLÜKƏSİZLİK QAYDALARI')), id: getUrl('txt-t-hl-k-si-zli-k-q-121', 'rules') as any, fallback: 'rules' as const, ruleSection: 'safety' },
     { name: getText('txt-ekoloji-m-suli-yy-612', 'EKOLOJİ MƏSULİYYƏT'), id: getUrl('txt-ekoloji-m-suli-yy-612', 'rules') as any, fallback: 'rules' as const, ruleSection: 'eco' },
   ];
 
