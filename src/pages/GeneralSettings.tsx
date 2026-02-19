@@ -16,6 +16,7 @@ const SETTINGS_NAV_ITEMS = [
     { id: 'seo-verify', label: 'Təsdiq kodları' },
     { id: 'contact-details', label: 'Əlaqə' },
     { id: 'departments', label: 'Şöbə e-poçtları' },
+    { id: 'smtp-settings', label: 'SMTP' },
     { id: 'branding', label: 'Brendinq' },
     { id: 'social-links', label: 'Sosial linklər' },
     { id: 'marquee-settings', label: 'Marquee' },
@@ -35,6 +36,7 @@ const GeneralSettings: React.FC = () => {
     const [pages, setPages] = useState<any[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [showSmtpPassword, setShowSmtpPassword] = useState(false);
     const [hiddenCards, setHiddenCards] = useState<string[]>(() => {
         try {
             const rawValue = localStorage.getItem(HIDDEN_SETTINGS_STORAGE_KEY);
@@ -659,6 +661,111 @@ const GeneralSettings: React.FC = () => {
                                 onChange={(e) => updateField('DEPT_TECH_EMAIL', e.target.value)}
                                 placeholder="tech@forsaj.az"
                             />
+                        </div>
+                    </div>
+                </div>
+
+                {/* SMTP Section */}
+                <div className={getCardClassName('smtp-settings')} data-settings-section="smtp-settings">
+                    <div className="card-header">
+                        <div className="card-title-wrap">
+                            <div className="card-title-row">
+                                <Mail size={20} className="text-emerald-500" />
+                                <h2>SMTP Bildiriş Ayarları</h2>
+                            </div>
+                            <p className="card-description">Form müraciətləri göndəriləndə e-poçt bildirişi üçün SMTP məlumatları.</p>
+                        </div>
+                        {renderCardAction('smtp-settings')}
+                    </div>
+                    <div className="card-body">
+                        <div className="field-group">
+                            <label>SMTP aktiv</label>
+                            <select
+                                value={getFieldValue('SMTP_ENABLED') || '1'}
+                                onChange={(e) => updateField('SMTP_ENABLED', e.target.value)}
+                            >
+                                <option value="1">Aktiv</option>
+                                <option value="0">Deaktiv</option>
+                            </select>
+                        </div>
+                        <div className="form-grid two-cols">
+                            <div className="field-group">
+                                <label>SMTP Host</label>
+                                <input
+                                    type="text"
+                                    value={getFieldValue('SMTP_HOST')}
+                                    onChange={(e) => updateField('SMTP_HOST', e.target.value)}
+                                    placeholder="smtp.gmail.com"
+                                />
+                            </div>
+                            <div className="field-group">
+                                <label>SMTP Port</label>
+                                <input
+                                    type="number"
+                                    value={getFieldValue('SMTP_PORT') || '587'}
+                                    onChange={(e) => updateField('SMTP_PORT', e.target.value)}
+                                    placeholder="587"
+                                />
+                            </div>
+                        </div>
+                        <div className="field-group">
+                            <label>Təhlükəsizlik (SSL/TLS)</label>
+                            <select
+                                value={getFieldValue('SMTP_SECURE') || '0'}
+                                onChange={(e) => updateField('SMTP_SECURE', e.target.value)}
+                            >
+                                <option value="0">Yox (STARTTLS/587)</option>
+                                <option value="1">Bəli (SSL/465)</option>
+                            </select>
+                        </div>
+                        <div className="form-grid two-cols">
+                            <div className="field-group">
+                                <label>SMTP istifadəçi</label>
+                                <input
+                                    type="text"
+                                    value={getFieldValue('SMTP_USER')}
+                                    onChange={(e) => updateField('SMTP_USER', e.target.value)}
+                                    placeholder="noreply@forsaj.az"
+                                />
+                            </div>
+                            <div className="field-group">
+                                <label>SMTP şifrə / app password</label>
+                                <div className="social-input-row">
+                                    <input
+                                        type={showSmtpPassword ? 'text' : 'password'}
+                                        value={getFieldValue('SMTP_PASS')}
+                                        onChange={(e) => updateField('SMTP_PASS', e.target.value)}
+                                        placeholder="********"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="social-test-link"
+                                        onClick={() => setShowSmtpPassword((prev) => !prev)}
+                                    >
+                                        {showSmtpPassword ? 'Gizlət' : 'Göstər'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="form-grid two-cols">
+                            <div className="field-group">
+                                <label>Göndərən ünvanı (From)</label>
+                                <input
+                                    type="text"
+                                    value={getFieldValue('SMTP_FROM')}
+                                    onChange={(e) => updateField('SMTP_FROM', e.target.value)}
+                                    placeholder="Forsaj Club <noreply@forsaj.az>"
+                                />
+                            </div>
+                            <div className="field-group">
+                                <label>Qəbul edən ünvan(lar) (To)</label>
+                                <input
+                                    type="text"
+                                    value={getFieldValue('SMTP_TO')}
+                                    onChange={(e) => updateField('SMTP_TO', e.target.value)}
+                                    placeholder="admin@forsaj.az, support@forsaj.az"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

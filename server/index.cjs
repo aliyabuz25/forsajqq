@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs/promises');
 const mysql = require('mysql2/promise');
+const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -495,6 +496,104 @@ const saveContent = async (id, data) => {
 const normalizeListPayload = (value) => {
     if (!Array.isArray(value)) return null;
     return normalizeListResource(value);
+};
+
+const normalizeSettingId = (value) => String(value || '').trim().toUpperCase();
+const toBoolean = (value, fallback = false) => {
+    if (typeof value === 'boolean') return value;
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return fallback;
+    return ['1', 'true', 'yes', 'on', 'enabled', 'active'].includes(normalized);
+};
+
+const resolveGeneralSettingValue = (siteContent, key, fallback = '') => {
+    if (!Array.isArray(siteContent)) return fallback;
+    const generalPage = siteContent.find((page) => String(page?.id || '').trim().toLowerCase() === 'general');
+    if (!generalPage || !Array.isArray(generalPage.sections)) return fallback;
+    const target = generalPage.sections.find((section) => normalizeSettingId(section?.id) === normalizeSettingId(key));
+    const value = String(target?.value || '').trim();
+    return value || fallback;
+};
+
+const resolveSmtpSettings = async () => {
+    const siteContent = await getContent('site-content', []);
+
+    const enabled = toBoolean(resolveGeneralSettingValue(siteContent, 'SMTP_ENABLED', process.env.SMTP_ENABLED || '1'), true);
+    const host = resolveGeneralSettingValue(siteContent, 'SMTP_HOST', process.env.SMTP_HOST || '');
+    const portRaw = resolveGeneralSettingValue(siteContent, 'SMTP_PORT', process.env.SMTP_PORT || '');
+    const port = Number(portRaw) || (toBoolean(resolveGeneralSettingValue(siteContent, 'SMTP_SECURE', process.env.SMTP_SECURE || '0')) ? 465 : 587);
+    const secure = toBoolean(resolveGeneralSettingValue(siteContent, 'SMTP_SECURE', process.env.SMTP_SECURE || '0'), port === 465);
+    const user = resolveGeneralSettingValue(siteContent, 'SMTP_USER', process.env.SMTP_USER || '');
+    const pass = resolveGeneralSettingValue(siteContent, 'SMTP_PASS', process.env.SMTP_PASS || '');
+    const from = resolveGeneralSettingValue(siteContent, 'SMTP_FROM', process.env.SMTP_FROM || user);
+    const to = resolveGeneralSettingValue(
+        siteContent,
+        'SMTP_TO',
+        process.env.SMTP_TO || resolveGeneralSettingValue(siteContent, 'CONTACT_EMAIL', process.env.NOTIFICATION_EMAIL || '')
+    );
+
+    return {
+        enabled,
+        host,
+        port,
+        secure,
+        user,
+        pass,
+        from,
+        toList: to.split(',').map((entry) => entry.trim()).filter(Boolean)
+    };
+};
+
+const formatApplicationMailContent = (content) => {
+    const trimmed = String(content || '').trim();
+    if (!trimmed) return 'Məzmun boşdur.';
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            return JSON.stringify(parsed, null, 2);
+        } catch {
+            return trimmed;
+        }
+    }
+    return trimmed;
+};
+
+const sendApplicationNotificationEmail = async ({ name, contact, type, content }) => {
+    const smtp = await resolveSmtpSettings();
+    if (!smtp.enabled) return { sent: false, reason: 'smtp_disabled' };
+    if (!smtp.host || !smtp.toList.length) return { sent: false, reason: 'smtp_not_configured' };
+
+    const transport = nodemailer.createTransport({
+        host: smtp.host,
+        port: smtp.port,
+        secure: smtp.secure,
+        auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined
+    });
+
+    const formattedContent = formatApplicationMailContent(content);
+    const createdAt = new Date().toISOString();
+    const subject = `[Forsaj] Yeni müraciət: ${type}`;
+
+    const textBody = [
+        'Yeni form müraciəti daxil oldu.',
+        '',
+        `Ad: ${name}`,
+        `Əlaqə: ${contact}`,
+        `Növ: ${type}`,
+        `Tarix: ${createdAt}`,
+        '',
+        'Məzmun:',
+        formattedContent
+    ].join('\n');
+
+    await transport.sendMail({
+        from: smtp.from || smtp.user,
+        to: smtp.toList.join(', '),
+        subject,
+        text: textBody
+    });
+
+    return { sent: true };
 };
 
 const escapeHtml = (value = '') => String(value)
@@ -1180,7 +1279,19 @@ app.post('/api/applications', async (req, res) => {
             'INSERT INTO applications (name, contact, type, content) VALUES (?, ?, ?, ?)',
             [name, contact, type, content]
         );
-        res.json({ success: true });
+
+        let mailStatus = { sent: false, reason: 'not_attempted' };
+        try {
+            mailStatus = await sendApplicationNotificationEmail({ name, contact, type, content });
+            if (!mailStatus.sent) {
+                console.warn('[applications] notification email skipped:', mailStatus.reason);
+            }
+        } catch (mailError) {
+            console.error('[applications] notification email failed:', mailError?.message || mailError);
+            mailStatus = { sent: false, reason: 'mail_error' };
+        }
+
+        res.json({ success: true, mailSent: Boolean(mailStatus.sent) });
     } catch (error) {
         console.error('Error submitting application:', error);
         res.status(500).json({ error: 'Müraciət göndərilərkən xəta baş verdi', code: error?.code || 'db_error' });
