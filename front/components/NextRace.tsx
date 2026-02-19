@@ -18,6 +18,12 @@ interface Event {
   status: string;
 }
 
+const normalizeEventStatus = (rawStatus: unknown): 'planned' | 'past' => {
+  const normalized = String(rawStatus || '').trim().toLocaleLowerCase('az');
+  if (normalized === 'past' || normalized === 'kecmis' || normalized === 'keçmiş') return 'past';
+  return 'planned';
+};
+
 const NextRace: React.FC<NextRaceProps> = ({ onViewChange }) => {
   const { getText, getUrl, getImage, getPage } = useSiteContent('nextrace');
   const [nextEvent, setNextEvent] = useState<Event | null>(null);
@@ -150,19 +156,14 @@ const NextRace: React.FC<NextRaceProps> = ({ onViewChange }) => {
         if (!response.ok) throw new Error('Failed to fetch events');
         const data = await response.json();
 
-        const now = new Date();
-        // Reset time to start of day for accurate comparison
-        now.setHours(0, 0, 0, 0);
-
-        const upcoming = data
-          .filter((e: Event) => {
-            const eventDate = new Date(e.date);
-            return eventDate >= now && e.status === 'planned';
-          })
+        const upcoming = (Array.isArray(data) ? data : [])
+          .filter((e: Event) => normalizeEventStatus(e.status) === 'planned')
           .sort((a: Event, b: Event) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         if (upcoming.length > 0) {
           setNextEvent(upcoming[0]);
+        } else {
+          setNextEvent(null);
         }
       } catch (error) {
         console.error('Failed to fetch events:', error);
