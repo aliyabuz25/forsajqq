@@ -3,6 +3,8 @@ import { ChevronRight, FileText, Download, ShieldAlert, Settings, Info, Leaf } f
 import { useSiteContent } from '../hooks/useSiteContent';
 import { bbcodeToHtml } from '../utils/bbcode';
 
+const RULES_TARGET_SECTION_KEY = 'forsaj_rules_target_section';
+
 interface RuleSection {
   id: string;
   title: string;
@@ -184,7 +186,57 @@ const RulesPage: React.FC = () => {
     }
   }, [activeSection, ruleSections]);
 
+  useEffect(() => {
+    if (!ruleSections.length) return;
+
+    const normalize = (value: string) =>
+      (value || '')
+        .toLocaleLowerCase('az')
+        .replace(/ə/g, 'e')
+        .replace(/ı/g, 'i')
+        .replace(/ö/g, 'o')
+        .replace(/ü/g, 'u')
+        .replace(/ğ/g, 'g')
+        .replace(/ş/g, 's')
+        .replace(/ç/g, 'c')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '');
+
+    const inferByToken = (token: string) => {
+      if (token.includes('pilot')) return 'pilot';
+      if (token.includes('technical') || token.includes('texniki') || token.includes('normativ')) return 'technical';
+      if (token.includes('safety') || token.includes('tehlukesiz')) return 'safety';
+      if (token.includes('eco') || token.includes('ekoloji')) return 'eco';
+      return '';
+    };
+
+    try {
+      const rawTarget = (sessionStorage.getItem(RULES_TARGET_SECTION_KEY) || '').trim();
+      sessionStorage.removeItem(RULES_TARGET_SECTION_KEY);
+      if (!rawTarget) return;
+
+      const normalizedTarget = normalize(rawTarget);
+      const inferredTarget = inferByToken(normalizedTarget);
+
+      const match = ruleSections.find((section) => {
+        const idToken = normalize(section.id);
+        const titleToken = normalize(section.title);
+        if (idToken === normalizedTarget || titleToken === normalizedTarget) return true;
+        if (inferredTarget && (idToken.includes(inferredTarget) || titleToken.includes(inferredTarget))) return true;
+        return false;
+      });
+
+      if (match) {
+        setActiveSection(match.id);
+      }
+    } catch {
+      // ignore storage access errors
+    }
+  }, [ruleSections]);
+
   const currentSection = ruleSections.find(s => s.id === activeSection) || ruleSections[0];
+  const displayDocName = currentSection?.docName || `${activeSection.toUpperCase()}_PROTOKOLU.PDF`;
   const resolveDocUrl = (rawUrl?: string) => {
     const value = (rawUrl || '').trim();
     if (!value) return '';
@@ -250,8 +302,11 @@ const RulesPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-gray-600 font-black italic text-[8px] uppercase tracking-[0.3em] mb-1">{getText('DOC_DOWNLOAD_LABEL', 'SƏNƏDİ YÜKLƏ')}</p>
-                <p className="text-white font-black italic text-[11px] uppercase tracking-tighter">
-                  {currentSection?.docName || `${activeSection.toUpperCase()}_PROTOKOLU.PDF`}
+                <p
+                  title={displayDocName}
+                  className="text-white font-black italic text-[11px] uppercase tracking-tighter max-w-[180px] md:max-w-[230px] truncate"
+                >
+                  {displayDocName}
                 </p>
               </div>
             </div>

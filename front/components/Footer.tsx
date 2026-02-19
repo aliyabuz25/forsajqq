@@ -1,8 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Instagram, Youtube, Facebook, ArrowRight, MapPin, Phone } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { resolveSocialLinks } from '../utils/socialLinks';
+import toast from 'react-hot-toast';
+
+const RULES_TARGET_SECTION_KEY = 'forsaj_rules_target_section';
 
 interface FooterProps {
   onViewChange: (view: 'home' | 'about' | 'news' | 'events' | 'drivers' | 'rules' | 'contact' | 'gallery' | 'privacy' | 'terms') => void;
@@ -11,6 +14,8 @@ interface FooterProps {
 const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
   const { getText, getUrl, getImage } = useSiteContent('footer');
   const { getText: getGeneralText, getImage: getImageGeneral } = useSiteContent('general');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false);
   const footerAbout = getText('FOOTER_ABOUT_TEXT', 'Azərbaycanın ən prestijli motorsport mərkəzi. Sərhədsiz offroad həyəcanını bizimlə yaşayın.');
   const addressLabel = getText('FOOTER_ADDRESS_LABEL', 'ÜNVAN');
   const contactLabel = getText('FOOTER_CONTACT_LABEL', 'ƏLAQƏ');
@@ -19,6 +24,9 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
   const newsletterTitle = getText('FOOTER_NEWSLETTER_TITLE', 'XƏBƏRDAR OL');
   const newsletterDesc = getText('FOOTER_NEWSLETTER_DESC', 'Yarış təqvimi və xəbərlərdən anında xəbərdar olmaq üçün abunə olun.');
   const newsletterPlaceholder = getText('FOOTER_NEWSLETTER_PLACEHOLDER', 'EMAIL DAXİL EDİN');
+  const newsletterRequiredToast = getText('FOOTER_NEWSLETTER_TOAST_REQUIRED', 'Zəhmət olmasa düzgün email daxil edin.');
+  const newsletterSuccessToast = getText('FOOTER_NEWSLETTER_TOAST_SUCCESS', 'Abunəliyiniz uğurla qeydə alındı!');
+  const newsletterErrorToast = getText('FOOTER_NEWSLETTER_TOAST_ERROR', 'Abunə zamanı xəta baş verdi.');
   const copyrightText = getText('FOOTER_COPYRIGHT', '© 2024 FORSAJ CLUB. ALL RIGHTS RESERVED.');
   const privacyLabel = getText('FOOTER_PRIVACY_LABEL', getText('txt-privacy-policy-517', 'Privacy Policy'));
   const termsLabel = getText('FOOTER_TERMS_LABEL', getText('txt-terms-of-servic-731', 'Terms of Service'));
@@ -160,6 +168,48 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
     }
   };
 
+  const submitNewsletter = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const email = newsletterEmail.trim().toLowerCase();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(email)) {
+      toast.error(newsletterRequiredToast);
+      return;
+    }
+
+    if (isNewsletterSubmitting) return;
+    setIsNewsletterSubmitting(true);
+
+    const payload = {
+      name: getText('FOOTER_NEWSLETTER_APP_NAME', 'NEWSLETTER ABUNƏSİ'),
+      contact: email,
+      type: getText('FOOTER_NEWSLETTER_APP_TYPE', 'Newsletter Subscription'),
+      content: JSON.stringify({
+        source: 'footer-newsletter',
+        email
+      })
+    };
+
+    try {
+      const res = await fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || 'request_failed');
+      }
+      toast.success(newsletterSuccessToast);
+      setNewsletterEmail('');
+    } catch {
+      toast.error(newsletterErrorToast);
+    } finally {
+      setIsNewsletterSubmitting(false);
+    }
+  };
+
 
   const navigationLinks = [
     { name: getText('txt-ana-s-h-f-744', 'ANA SƏHİFƏ'), id: getUrl('txt-ana-s-h-f-744', 'home') as any, fallback: 'home' as const },
@@ -172,10 +222,10 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
   ];
 
   const rulesLinks = [
-    { name: getText('txt-pi-lot-protokolu-31', 'PİLOT PROTOKOLU'), id: getUrl('txt-pi-lot-protokolu-31', 'rules') as any, fallback: 'rules' as const },
-    { name: getText('txt-texni-ki-normati-712', 'TEXNİKİ NORMATİVLƏR'), id: getUrl('txt-texni-ki-normati-712', 'rules') as any, fallback: 'rules' as const },
-    { name: getText('txt-t-hl-k-si-zli-k-q-121', 'TƏHLÜKƏSİZLİK QAYDALARI'), id: getUrl('txt-t-hl-k-si-zli-k-q-121', 'rules') as any, fallback: 'rules' as const },
-    { name: getText('txt-ekoloji-m-suli-yy-612', 'EKOLOJİ MƏSULİYYƏT'), id: getUrl('txt-ekoloji-m-suli-yy-612', 'rules') as any, fallback: 'rules' as const },
+    { name: getText('txt-pi-lot-protokolu-31', 'PİLOT PROTOKOLU'), id: getUrl('txt-pi-lot-protokolu-31', 'rules') as any, fallback: 'rules' as const, ruleSection: 'pilot' },
+    { name: getText('txt-texni-ki-normati-712', 'TEXNİKİ NORMATİVLƏR'), id: getUrl('txt-texni-ki-normati-712', 'rules') as any, fallback: 'rules' as const, ruleSection: 'technical' },
+    { name: getText('txt-t-hl-k-si-zli-k-q-121', 'TƏHLÜKƏSİZLİK QAYDALARI'), id: getUrl('txt-t-hl-k-si-zli-k-q-121', 'rules') as any, fallback: 'rules' as const, ruleSection: 'safety' },
+    { name: getText('txt-ekoloji-m-suli-yy-612', 'EKOLOJİ MƏSULİYYƏT'), id: getUrl('txt-ekoloji-m-suli-yy-612', 'rules') as any, fallback: 'rules' as const, ruleSection: 'eco' },
   ];
 
   return (
@@ -269,6 +319,11 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
               <li key={link.name}>
                 <button
                   onClick={() => {
+                    try {
+                      sessionStorage.setItem(RULES_TARGET_SECTION_KEY, link.ruleSection);
+                    } catch {
+                      // ignore storage access errors
+                    }
                     navigateFromConfig(link.id, link.fallback, link.name);
                   }}
                   className="text-gray-500 font-black italic text-[11px] uppercase hover:text-white transition-colors tracking-tight text-left"
@@ -285,16 +340,23 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
           <p className="text-gray-500 font-bold italic text-[10px] uppercase mb-8 leading-relaxed tracking-tight">
             {newsletterDesc}
           </p>
-          <div className="flex items-center">
+          <form className="flex items-center" onSubmit={submitNewsletter}>
             <input
               type="email"
+              value={newsletterEmail}
+              onChange={(event) => setNewsletterEmail(event.target.value)}
               placeholder={newsletterPlaceholder}
+              disabled={isNewsletterSubmitting}
               className="flex-grow bg-[#111] border border-white/10 border-r-0 py-4 px-5 font-black italic text-[10px] text-white uppercase focus:outline-none focus:border-[#FF4D00] transition-colors placeholder:text-gray-600"
             />
-            <button className="bg-[#FF4D00] text-black p-4 hover:bg-white transition-colors flex items-center justify-center">
+            <button
+              type="submit"
+              disabled={isNewsletterSubmitting}
+              className="bg-[#FF4D00] text-black p-4 hover:bg-white transition-colors flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+            >
               <ArrowRight size={22} strokeWidth={3} />
             </button>
-          </div>
+          </form>
         </div>
       </div>
 
