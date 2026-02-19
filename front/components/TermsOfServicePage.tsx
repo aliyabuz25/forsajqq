@@ -57,6 +57,25 @@ const TermsOfServicePage: React.FC = () => {
     body: getText(`SECTION_${index + 1}_BODY`, section.body)
   }));
 
+  const normalizeToken = (value: string) =>
+    (value || '')
+      .toLocaleLowerCase('az')
+      .replace(/ə/g, 'e')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ü/g, 'u')
+      .replace(/ğ/g, 'g')
+      .replace(/ş/g, 's')
+      .replace(/ç/g, 'c')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '');
+
+  const contentSections = sections.filter((section) => {
+    const titleToken = normalizeToken(section.title);
+    return !titleToken.includes('elaqe') && !titleToken.includes('contact');
+  });
+
   return (
     <div className="bg-[#0A0A0A] min-h-screen py-16 px-6 lg:px-20 text-white">
       <div className="max-w-6xl mx-auto">
@@ -82,7 +101,7 @@ const TermsOfServicePage: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          {sections.map((section, idx) => (
+          {contentSections.map((section, idx) => (
             <article key={`terms-section-${idx}`} className="bg-[#111] border border-white/5 p-6 md:p-8 rounded-sm">
               <h3 className="text-xl md:text-2xl font-black italic text-[#FF4D00] mb-4 uppercase tracking-tight">{section.title}</h3>
               <p className="text-gray-300 leading-relaxed whitespace-pre-line">{section.body}</p>
