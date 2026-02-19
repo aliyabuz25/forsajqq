@@ -19,6 +19,26 @@ const normalizeRichTextSpacing = (value: unknown) =>
     .replace(/&nbsp;/gi, ' ')
     .replace(/\u00a0/g, ' ');
 
+const toPlainText = (value: unknown) =>
+  String(value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\[[^\]]+\]/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getShareExcerpt = (value: unknown, limit = 140) => {
+  const plain = toPlainText(value);
+  if (!plain) return '';
+  return plain.length > limit ? `${plain.slice(0, limit - 1).trimEnd()}…` : plain;
+};
+
 const NewsPage: React.FC = () => {
   const { getText } = useSiteContent('newspage');
   const [newsData, setNewsData] = useState<NewsItem[]>([]);
@@ -76,10 +96,19 @@ const NewsPage: React.FC = () => {
   }, [selectedNews]);
 
   const handleShare = (platform: string) => {
-    const currentUrl = window.location.href;
-    const shareText = (selectedNews?.title || '').trim();
-    const encodedUrl = encodeURIComponent(currentUrl);
-    const encodedText = encodeURIComponent(shareText);
+    if (!selectedNews) return;
+
+    const shareLink = `${window.location.origin}/api/share/news/${selectedNews.id}`;
+    const shareTitle = (selectedNews.title || '').trim();
+    const shareExcerpt = getShareExcerpt(selectedNews.desc || selectedNews.content, 140);
+
+    const encodedUrl = encodeURIComponent(shareLink);
+    const encodedText = encodeURIComponent(shareTitle);
+    const encodedDescription = encodeURIComponent(shareExcerpt);
+    const encodedWhatsAppText = encodeURIComponent(
+      [shareTitle, shareExcerpt, shareLink].filter(Boolean).join('\n')
+    );
+
     let shareUrl = '';
 
     switch (platform) {
@@ -87,13 +116,13 @@ const NewsPage: React.FC = () => {
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
         break;
       case 'twitter':
-        shareUrl = `https://x.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        shareUrl = `https://x.com/intent/tweet?text=${encodedText}%20${encodedDescription}&url=${encodedUrl}`;
         break;
       case 'whatsapp':
-        shareUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${currentUrl}`.trim())}`;
+        shareUrl = `https://wa.me/?text=${encodedWhatsAppText}`;
         break;
       case 'telegram':
-        shareUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`;
+        shareUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}%20${encodedDescription}`;
         break;
       default:
         return;

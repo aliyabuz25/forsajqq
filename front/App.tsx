@@ -17,6 +17,8 @@ import TermsOfServicePage from './components/TermsOfServicePage';
 import { useSiteContent } from './hooks/useSiteContent';
 import { useEffect } from 'react';
 
+const SELECTED_NEWS_ID_KEY = 'forsaj_selected_news_id';
+
 type FrontView =
   | 'home'
   | 'about'
@@ -40,6 +42,42 @@ const App: React.FC = () => {
   };
 
   const { getText } = useSiteContent('general');
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rawView = (params.get('view') || '').trim().toLowerCase();
+      const rawNewsId = (params.get('id') || '').trim();
+
+      const viewMap: Record<string, FrontView> = {
+        home: 'home',
+        about: 'about',
+        news: 'news',
+        events: 'events',
+        drivers: 'drivers',
+        rules: 'rules',
+        contact: 'contact',
+        gallery: 'gallery',
+        privacy: 'privacy',
+        terms: 'terms'
+      };
+
+      const resolvedView = viewMap[rawView];
+      if (!resolvedView) return;
+
+      if (resolvedView === 'news') {
+        const newsId = Number(rawNewsId);
+        if (Number.isFinite(newsId)) {
+          sessionStorage.setItem(SELECTED_NEWS_ID_KEY, String(newsId));
+        }
+      }
+
+      setCurrentView(resolvedView);
+      setActiveCategory(null);
+    } catch {
+      // ignore malformed query string / storage access errors
+    }
+  }, []);
 
   useEffect(() => {
     const title = getText('SEO_TITLE', 'Forsaj Club - Offroad Motorsport Hub');

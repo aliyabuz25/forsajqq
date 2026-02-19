@@ -496,6 +496,49 @@ const normalizeListPayload = (value) => {
     return normalizeListResource(value);
 };
 
+const escapeHtml = (value = '') => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const toPlainText = (value) => String(value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\[[^\]]+\]/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getTextExcerpt = (value, limit = 180) => {
+    const plain = toPlainText(value);
+    if (!plain) return '';
+    if (plain.length <= limit) return plain;
+    return `${plain.slice(0, limit - 1).trimEnd()}…`;
+};
+
+const getRequestBaseUrl = (req) => {
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+    const protocol = forwardedProto || req.protocol || 'https';
+    const host = forwardedHost || req.get('host') || '';
+    return `${protocol}://${host}`;
+};
+
+const toAbsoluteUrl = (req, rawPath) => {
+    const value = String(rawPath || '').trim();
+    if (!value) return '';
+    if (/^https?:\/\//i.test(value)) return value;
+    const base = getRequestBaseUrl(req);
+    return `${base}${value.startsWith('/') ? value : `/${value}`}`;
+};
+
 const migrateFilesToDB = async () => {
     const filesToMigrate = [
         { id: SITE_NEW_STRUCT_ID, path: SITE_NEW_STRUCT_PATH },
@@ -696,6 +739,71 @@ app.get('/api/news', async (req, res) => {
     } catch (error) {
         console.error('Error reading news:', error);
         res.status(500).json({ error: 'Failed to read news' });
+    }
+});
+
+// Public share page with social preview metadata for a specific news item.
+app.get('/api/share/news/:id', async (req, res) => {
+    try {
+        const requestedId = Number(req.params.id);
+        const newsList = await getContent('news', []);
+        const newsItems = Array.isArray(newsList) ? newsList : [];
+        const selectedNews = Number.isFinite(requestedId)
+            ? newsItems.find((item) => Number(item?.id) === requestedId)
+            : null;
+
+        const baseUrl = getRequestBaseUrl(req);
+        const targetUrl = selectedNews
+            ? `${baseUrl}/?view=news&id=${encodeURIComponent(String(selectedNews.id))}`
+            : `${baseUrl}/?view=news`;
+
+        const title = (selectedNews?.title || 'Forsaj Club Xəbərləri').toString().trim() || 'Forsaj Club Xəbərləri';
+        const description = getTextExcerpt(
+            selectedNews?.description || selectedNews?.desc || title,
+            170
+        );
+        const imageUrl = toAbsoluteUrl(req, selectedNews?.img || '');
+
+        const escapedTitle = escapeHtml(title);
+        const escapedDescription = escapeHtml(description);
+        const escapedTargetUrl = escapeHtml(targetUrl);
+        const escapedImageUrl = escapeHtml(imageUrl);
+
+        const html = `<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapedTitle}</title>
+  <meta name="description" content="${escapedDescription}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Forsaj Club" />
+  <meta property="og:title" content="${escapedTitle}" />
+  <meta property="og:description" content="${escapedDescription}" />
+  <meta property="og:url" content="${escapedTargetUrl}" />
+  ${escapedImageUrl ? `<meta property="og:image" content="${escapedImageUrl}" />` : ''}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${escapedTitle}" />
+  <meta name="twitter:description" content="${escapedDescription}" />
+  ${escapedImageUrl ? `<meta name="twitter:image" content="${escapedImageUrl}" />` : ''}
+  <link rel="canonical" href="${escapedTargetUrl}" />
+  <meta http-equiv="refresh" content="0;url=${escapedTargetUrl}" />
+</head>
+<body>
+  <noscript>
+    <p>Yönləndirmə üçün bu linkə daxil olun: <a href="${escapedTargetUrl}">${escapedTargetUrl}</a></p>
+  </noscript>
+  <script>
+    window.location.replace(${JSON.stringify(targetUrl)});
+  </script>
+</body>
+</html>`;
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (error) {
+        console.error('Error rendering share page:', error);
+        res.redirect('/?view=news');
     }
 });
 // API: Save News
