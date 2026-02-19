@@ -17,8 +17,7 @@ services:
     volumes:
       - /datastore/forsaj/data:/app/data
     depends_on:
-      forsaj-db:
-        condition: service_healthy
+      - forsaj-db
     networks:
       - edge
     healthcheck:
@@ -40,8 +39,7 @@ services:
       dockerfile: Dockerfile.frontend
     restart: unless-stopped
     depends_on:
-      forsaj-backend:
-        condition: service_healthy
+      - forsaj-backend
     networks:
       - edge
     healthcheck:
@@ -63,8 +61,7 @@ services:
       dockerfile: Dockerfile.admin
     restart: unless-stopped
     depends_on:
-      forsaj-backend:
-        condition: service_healthy
+      - forsaj-backend
     networks:
       - edge
     healthcheck:
@@ -110,8 +107,7 @@ services:
       dockerfile: Dockerfile.phpmyadmin
     restart: unless-stopped
     depends_on:
-      forsaj-db:
-        condition: service_healthy
+      - forsaj-db
     networks:
       - edge
     environment:
