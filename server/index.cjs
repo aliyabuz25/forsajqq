@@ -580,33 +580,84 @@ const resolveSmtpSettings = async () => {
 
 const formatApplicationMailContent = (content) => {
     const trimmed = String(content || '').trim();
-    if (!trimmed) return { text: 'Məzmun boşdur.', html: '<p style="margin:0;color:#111827;">Məzmun boşdur.</p>' };
+    if (!trimmed) {
+        return {
+            text: 'Məzmun boşdur.',
+            html: '<p style="margin:0;color:#d1d5db;font-size:14px;line-height:1.7;">Məzmun boşdur.</p>'
+        };
+    }
+
+    const toParagraphHtml = (value) => {
+        const lines = String(value || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+        if (!lines.length) return '<p style="margin:0;color:#d1d5db;font-size:14px;line-height:1.7;">Məzmun boşdur.</p>';
+        return lines
+            .map((line) => `<p style="margin:0 0 8px;color:#d1d5db;font-size:14px;line-height:1.7;">${escapeHtml(line)}</p>`)
+            .join('');
+    };
+
+    const toKeyValueTable = (entries) => {
+        if (!entries.length) return '<p style="margin:0;color:#d1d5db;font-size:14px;line-height:1.7;">Məzmun boşdur.</p>';
+        const rows = entries.map(([key, value]) => {
+            const safeKey = escapeHtml(String(key));
+            const safeValue = escapeHtml(String(value ?? '-'));
+            return `<tr><td style="padding:10px 0;color:#9ca3af;font-size:12px;width:170px;vertical-align:top;text-transform:uppercase;letter-spacing:0.06em;">${safeKey}</td><td style="padding:10px 0;color:#f9fafb;font-size:14px;font-weight:600;word-break:break-word;">${safeValue}</td></tr>`;
+        }).join('');
+        return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%">${rows}</table>`;
+    };
+
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
         try {
             const parsed = JSON.parse(trimmed);
             if (Array.isArray(parsed)) {
-                const text = JSON.stringify(parsed, null, 2);
-                return { text, html: `<pre style="margin:0;white-space:pre-wrap;color:#111827;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">${escapeHtml(text)}</pre>` };
+                if (!parsed.length) {
+                    return {
+                        text: 'Məzmun boşdur.',
+                        html: '<p style="margin:0;color:#d1d5db;font-size:14px;line-height:1.7;">Məzmun boşdur.</p>'
+                    };
+                }
+
+                const normalizedTextLines = [];
+                const itemBlocks = parsed.map((item, index) => {
+                    if (isPlainObject(item)) {
+                        const entries = Object.entries(item);
+                        normalizedTextLines.push(`${index + 1}.`);
+                        entries.forEach(([key, value]) => normalizedTextLines.push(`${key}: ${String(value ?? '')}`));
+                        const itemTable = toKeyValueTable(entries);
+                        return `<div style="margin:0 0 12px;padding:14px;border:1px solid #374151;border-radius:10px;background:#0b1220;"><div style="margin:0 0 10px;color:#f97316;font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">Maddə ${index + 1}</div>${itemTable}</div>`;
+                    }
+                    const lineText = String(item ?? '').trim();
+                    normalizedTextLines.push(`${index + 1}. ${lineText}`);
+                    return `<div style="margin:0 0 10px;color:#d1d5db;font-size:14px;line-height:1.7;"><strong style="color:#f97316;">${index + 1}.</strong> ${escapeHtml(lineText)}</div>`;
+                }).join('');
+
+                return {
+                    text: normalizedTextLines.join('\n'),
+                    html: itemBlocks
+                };
             }
             if (isPlainObject(parsed)) {
-                const rows = Object.entries(parsed).map(([key, value]) => {
-                    const safeKey = escapeHtml(key);
-                    const safeValue = escapeHtml(String(value ?? ''));
-                    return `<tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:160px;vertical-align:top;">${safeKey}</td><td style="padding:8px 0;color:#111827;font-size:14px;font-weight:600;word-break:break-word;">${safeValue}</td></tr>`;
-                }).join('');
                 const text = Object.entries(parsed).map(([key, value]) => `${key}: ${String(value ?? '')}`).join('\n');
                 return {
                     text,
-                    html: `<table role="presentation" cellpadding="0" cellspacing="0" width="100%">${rows}</table>`
+                    html: toKeyValueTable(Object.entries(parsed))
                 };
             }
             const text = String(parsed);
-            return { text, html: `<p style="margin:0;color:#111827;">${escapeHtml(text)}</p>` };
+            return {
+                text,
+                html: toParagraphHtml(text)
+            };
         } catch {
-            return { text: trimmed, html: `<pre style="margin:0;white-space:pre-wrap;color:#111827;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">${escapeHtml(trimmed)}</pre>` };
+            return {
+                text: trimmed,
+                html: toParagraphHtml(trimmed)
+            };
         }
     }
-    return { text: trimmed, html: `<p style="margin:0;color:#111827;">${escapeHtml(trimmed)}</p>` };
+    return {
+        text: trimmed,
+        html: toParagraphHtml(trimmed)
+    };
 };
 
 const sendApplicationNotificationEmail = async ({ name, contact, type, content }) => {
@@ -646,40 +697,40 @@ const sendApplicationNotificationEmail = async ({ name, contact, type, content }
     const safeSiteUrl = escapeHtml(siteUrlText);
     const headerLogo = smtp.logoUrl
         ? `<img src="${escapeHtml(smtp.logoUrl)}" alt="${safeSiteName}" style="max-height:44px;width:auto;display:block;" />`
-        : `<div style="font-size:22px;font-weight:900;letter-spacing:0.02em;color:#111827;">${safeSiteName}</div>`;
+        : `<div style="font-size:22px;font-weight:900;letter-spacing:0.02em;color:#f9fafb;">${safeSiteName}</div>`;
 
     const htmlBody = `
-      <div style="background:#f3f4f6;padding:24px 0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+      <div style="background:#030712;padding:28px 0;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:700px;margin:0 auto;background:#0b1220;border-radius:16px;overflow:hidden;border:1px solid #1f2937;">
           <tr>
-            <td style="background:#111827;padding:22px 28px;">
+            <td style="background:#050505;padding:24px 30px;border-bottom:1px solid #1f2937;">
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>${headerLogo}</td>
-                  <td style="text-align:right;color:#9ca3af;font-size:12px;">Yeni form müraciəti</td>
+                  <td style="text-align:right;color:#f97316;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Yeni Form Müraciəti</td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td style="padding:28px;">
-              <h2 style="margin:0 0 18px;font-size:22px;line-height:1.3;color:#111827;">Yeni müraciət daxil oldu</h2>
+            <td style="padding:30px;">
+              <h2 style="margin:0 0 18px;font-size:24px;line-height:1.3;color:#f9fafb;">Yeni müraciət daxil oldu</h2>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:18px;">
-                <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:140px;">Ad</td><td style="padding:8px 0;color:#111827;font-size:14px;font-weight:700;">${safeName}</td></tr>
-                <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:140px;">Əlaqə</td><td style="padding:8px 0;color:#111827;font-size:14px;font-weight:700;">${safeContact}</td></tr>
-                <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:140px;">Növ</td><td style="padding:8px 0;color:#111827;font-size:14px;font-weight:700;">${safeType}</td></tr>
-                <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:140px;">Tarix</td><td style="padding:8px 0;color:#111827;font-size:14px;font-weight:700;">${safeDate}</td></tr>
+                <tr><td style="padding:8px 0;color:#9ca3af;font-size:12px;width:140px;text-transform:uppercase;letter-spacing:0.06em;">Ad Soyad</td><td style="padding:8px 0;color:#f9fafb;font-size:14px;font-weight:700;">${safeName}</td></tr>
+                <tr><td style="padding:8px 0;color:#9ca3af;font-size:12px;width:140px;text-transform:uppercase;letter-spacing:0.06em;">Əlaqə</td><td style="padding:8px 0;color:#f9fafb;font-size:14px;font-weight:700;">${safeContact}</td></tr>
+                <tr><td style="padding:8px 0;color:#9ca3af;font-size:12px;width:140px;text-transform:uppercase;letter-spacing:0.06em;">Form Növü</td><td style="padding:8px 0;color:#f9fafb;font-size:14px;font-weight:700;">${safeType}</td></tr>
+                <tr><td style="padding:8px 0;color:#9ca3af;font-size:12px;width:140px;text-transform:uppercase;letter-spacing:0.06em;">Tarix</td><td style="padding:8px 0;color:#f9fafb;font-size:14px;font-weight:700;">${safeDate}</td></tr>
               </table>
 
-              <div style="margin-top:6px;border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#fafafa;">
-                <div style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#6b7280;text-transform:uppercase;margin-bottom:10px;">Müraciət Məzmunu</div>
+              <div style="margin-top:8px;border:1px solid #1f2937;border-radius:12px;padding:16px;background:#111827;">
+                <div style="font-size:12px;font-weight:800;letter-spacing:0.08em;color:#f97316;text-transform:uppercase;margin-bottom:12px;">Müraciət Məzmunu</div>
                 ${formattedContent.html}
               </div>
             </td>
           </tr>
           <tr>
-            <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:14px 28px;color:#6b7280;font-size:12px;">
-              ${safeSiteName}${siteUrlText ? ` • <a href="${safeSiteUrl}" style="color:#374151;text-decoration:none;">${safeSiteUrl}</a>` : ''}
+            <td style="background:#050505;border-top:1px solid #1f2937;padding:14px 30px;color:#9ca3af;font-size:12px;">
+              ${safeSiteName}${siteUrlText ? ` • <a href="${safeSiteUrl}" style="color:#f97316;text-decoration:none;">${safeSiteUrl}</a>` : ''}
             </td>
           </tr>
         </table>
