@@ -13,6 +13,50 @@ interface Application {
     created_at: string;
 }
 
+const CONTENT_KEY_LABELS: Record<string, string> = {
+    source: 'Mənbə',
+    email: 'E-poçt',
+    phone: 'Telefon',
+    mobile: 'Mobil',
+    contact: 'Əlaqə',
+    message: 'Mesaj',
+    note: 'Qeyd',
+    event: 'Tədbir',
+    car: 'Avtomobil',
+    tire: 'Təkər',
+    engine: 'Mühərrik',
+    club: 'Klub',
+    city: 'Şəhər',
+    country: 'Ölkə',
+    name: 'Ad',
+    fullname: 'Ad Soyad'
+};
+
+const normalizeKey = (value: string) => String(value || '').trim().toLowerCase();
+const prettifyContentKey = (key: string) => {
+    const normalized = normalizeKey(key);
+    if (CONTENT_KEY_LABELS[normalized]) return CONTENT_KEY_LABELS[normalized];
+    return String(key || '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (char) => char.toLocaleUpperCase('az-AZ'));
+};
+
+const formatAzDateTime = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value || '');
+    return date.toLocaleString('az-AZ', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+const mapStatusLabel = (status: Application['status']) => status === 'unread' ? 'Oxunmamış' : 'Oxunmuş';
+
 const ApplicationsManager: React.FC = () => {
     const [applications, setApplications] = useState<Application[]>([]);
     const [selectedApp, setSelectedApp] = useState<Application | null>(null);
@@ -92,13 +136,13 @@ const ApplicationsManager: React.FC = () => {
             if (Array.isArray(parsed)) {
                 return {
                     contentText: parsed.map((item) => String(item ?? '')).join(' | '),
-                    parsedFields: { content_json: JSON.stringify(parsed) }
+                    parsedFields: { 'Məzmun - Siyahı': JSON.stringify(parsed) }
                 };
             }
             if (parsed && typeof parsed === 'object') {
                 const parsedFields: Record<string, string> = {};
                 for (const [key, value] of Object.entries(parsed)) {
-                    parsedFields[`content_${String(key).trim()}`] = String(value ?? '');
+                    parsedFields[`Məzmun - ${prettifyContentKey(String(key).trim())}`] = String(value ?? '');
                 }
                 return {
                     contentText: Object.entries(parsed).map(([key, value]) => `${key}: ${String(value ?? '')}`).join(' | '),
@@ -120,30 +164,54 @@ const ApplicationsManager: React.FC = () => {
 
         try {
             const XLSX = await import('xlsx');
-            const rows = filteredApps.map((app) => {
+            const rows = filteredApps.map((app, index) => {
                 const { contentText, parsedFields } = parseContentForExport(app.content);
                 return {
-                    id: app.id,
-                    status: app.status,
-                    name: app.name,
-                    contact: app.contact,
-                    type: app.type,
-                    created_at: app.created_at,
-                    content: contentText,
+                    'Sıra': index + 1,
+                    'ID': app.id,
+                    'Status': mapStatusLabel(app.status),
+                    'Göndərən': app.name,
+                    'Əlaqə': app.contact,
+                    'Müraciət Növü': app.type,
+                    'Tarix': formatAzDateTime(app.created_at),
+                    'Məzmun (Qısa)': contentText,
                     ...parsedFields
                 };
             });
 
-            const headers = Array.from(rows.reduce((acc, row) => {
+            const baseHeaders = ['Sıra', 'ID', 'Status', 'Göndərən', 'Əlaqə', 'Müraciət Növü', 'Tarix', 'Məzmun (Qısa)'];
+            const dynamicHeaders = Array.from(rows.reduce((acc, row) => {
                 Object.keys(row).forEach((key) => acc.add(key));
                 return acc;
-            }, new Set<string>()));
+            }, new Set<string>())).filter((key) => !baseHeaders.includes(key));
+            const headers = [...baseHeaders, ...dynamicHeaders];
 
             const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+            worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}1` };
+            worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
+            worksheet['!cols'] = headers.map((header) => {
+                if (header === 'Məzmun (Qısa)') return { wch: 48 };
+                if (header.startsWith('Məzmun - ')) return { wch: 28 };
+                if (header === 'Tarix') return { wch: 18 };
+                if (header === 'Status' || header === 'Müraciət Növü') return { wch: 16 };
+                if (header === 'Göndərən' || header === 'Əlaqə') return { wch: 24 };
+                if (header === 'Sıra' || header === 'ID') return { wch: 8 };
+                return { wch: 20 };
+            });
+
+            const summaryRows = [
+                { 'Məlumat': 'Export tarixi', 'Dəyər': formatAzDateTime(new Date().toISOString()) },
+                { 'Məlumat': 'Filtr', 'Dəyər': filter === 'all' ? 'Hamısı' : filter === 'unread' ? 'Oxunmamış' : 'Oxunmuş' },
+                { 'Məlumat': 'Müraciət sayı', 'Dəyər': String(filteredApps.length) }
+            ];
+            const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+            summarySheet['!cols'] = [{ wch: 20 }, { wch: 36 }];
+
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Applications');
+            XLSX.utils.book_append_sheet(workbook, summarySheet, 'Xülasə');
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Müraciətlər');
             const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-            XLSX.writeFile(workbook, `applications-${filter}-${stamp}.xlsx`);
+            XLSX.writeFile(workbook, `muracietler-${filter}-${stamp}.xlsx`);
             toast.success('XLSX faylı yükləndi');
         } catch (error) {
             console.error(error);
@@ -185,7 +253,7 @@ const ApplicationsManager: React.FC = () => {
                 </div>
                 <button className="btn-export" onClick={exportToXlsx}>
                     <Download size={16} />
-                    XLSX Export
+                    Excelə Aktar
                 </button>
             </div>
 
