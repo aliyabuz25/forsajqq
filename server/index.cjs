@@ -497,22 +497,6 @@ const normalizeListPayload = (value) => {
     return normalizeListResource(value);
 };
 
-const RESERVED_GALLERY_ALBUM_KEYS = new Set([
-    '',
-    'umumi arxiv',
-    'ümumi arxiv',
-    'general archive',
-    'default',
-    'archive',
-    'arxiv'
-]);
-const normalizeGalleryAlbumKey = (value) => String(value || '').trim().toLocaleLowerCase('az').normalize('NFC');
-const hasReservedGalleryAlbum = (items) => items.some((item) => {
-    if (!isPlainObject(item)) return false;
-    const key = normalizeGalleryAlbumKey(item.album);
-    return RESERVED_GALLERY_ALBUM_KEYS.has(key);
-});
-
 const escapeHtml = (value = '') => String(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -698,9 +682,6 @@ app.post('/api/gallery-photos', async (req, res) => {
     try {
         const photos = normalizeListPayload(req.body);
         if (!photos) return res.status(400).json({ error: 'Invalid gallery payload' });
-        if (hasReservedGalleryAlbum(photos)) {
-            return res.status(400).json({ error: 'Album is required for each photo' });
-        }
         const ok = await saveContent('gallery-photos', photos);
         if (!ok) return res.status(500).json({ error: 'Failed to save gallery photos' });
         res.json({ success: true });

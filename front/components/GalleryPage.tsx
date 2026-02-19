@@ -40,7 +40,7 @@ const isNamedAlbum = (value: string) => {
   const key = normalizeAlbumKey(value);
   return key !== '' && !DEFAULT_ALBUM_KEYS.has(key);
 };
-const GALLERY_REFRESH_MS = 15000;
+const GALLERY_REFRESH_MS = 3000;
 const GALLERY_VERSION_KEY = 'forsaj_gallery_version';
 
 const GalleryPage: React.FC = () => {

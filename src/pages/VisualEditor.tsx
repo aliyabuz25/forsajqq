@@ -2342,10 +2342,6 @@ const VisualEditor: React.FC = () => {
                 });
                 if (!res.ok) throw new Error(await res.text());
             } else if (editorMode === 'photos') {
-                const genericAlbumPhoto = galleryPhotos.find((photo) => isReservedPhotoAlbum(photo.album));
-                if (genericAlbumPhoto) {
-                    throw new Error(`"${genericAlbumPhoto.title}" üçün albom seçilməyib`);
-                }
                 const res = await fetch('/api/gallery-photos', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
