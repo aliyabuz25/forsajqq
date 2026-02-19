@@ -108,18 +108,18 @@ const Hero: React.FC<HeroProps> = ({ onViewChange }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-black/40"></div>
       </div>
 
-      <div className="relative z-10 text-center px-4 max-w-4xl">
+      <div className="relative z-10 text-center px-4 max-w-6xl">
         <div className="flex items-center justify-center gap-2 mb-6">
           <div className="w-10 h-0.5 bg-[#FF4D00]"></div>
-          <h3 className="text-[#FF4D00] font-black italic tracking-[0.3em] text-[10px] uppercase">
+          <h3 className="hero-kicker text-[#FF4D00] font-black italic tracking-[0.16em] text-[10px] uppercase break-words [overflow-wrap:anywhere]">
             {getText('text-0', 'AZERBAIJAN OFFROAD MOTORSPORT HUB')}
           </h3>
           <div className="w-10 h-0.5 bg-[#FF4D00]"></div>
         </div>
-        <h2 className="text-6xl md:text-9xl font-black italic tracking-tighter leading-[0.85] mb-8 text-white uppercase">
+        <h2 className="hero-title text-[clamp(2rem,8vw,6.8rem)] font-black italic tracking-[-0.02em] leading-[0.92] mb-8 text-white uppercase break-words [overflow-wrap:anywhere]">
           {getText('text-1', 'SƏRHƏDSİZ OFFROAD HƏYƏCANI')}
         </h2>
-        <p className="text-gray-400 font-bold italic max-w-xl mx-auto mb-10 text-sm md:text-base leading-relaxed uppercase tracking-wide">
+        <p className="hero-desc text-gray-400 font-bold italic max-w-2xl mx-auto mb-10 text-sm md:text-base leading-relaxed uppercase tracking-wide break-words [overflow-wrap:anywhere]">
           {getText('text-2', 'Azərbaycanın ən çətin yollarında peşəkar yarışlar və adrenalin dolu anlar.')}
         </p>
 

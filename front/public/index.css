@@ -218,3 +218,22 @@ a {
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* Keep hero typography stable when Google Translate wraps text nodes. */
+.hero-kicker,
+.hero-title,
+.hero-desc {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.hero-kicker *,
+.hero-title *,
+.hero-desc * {
+  font: inherit !important;
+  letter-spacing: inherit !important;
+  line-height: inherit !important;
+  text-transform: inherit !important;
+  white-space: inherit !important;
+}
