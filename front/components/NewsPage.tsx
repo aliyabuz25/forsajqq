@@ -14,6 +14,11 @@ interface NewsItem {
 
 const SELECTED_NEWS_ID_KEY = 'forsaj_selected_news_id';
 
+const normalizeRichTextSpacing = (value: unknown) =>
+  String(value ?? '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\u00a0/g, ' ');
+
 const NewsPage: React.FC = () => {
   const { getText } = useSiteContent('newspage');
   const [newsData, setNewsData] = useState<NewsItem[]>([]);
@@ -37,9 +42,9 @@ const NewsPage: React.FC = () => {
             id: item.id,
             title: item.title,
             date: item.date,
-            desc: item.description,
+            desc: normalizeRichTextSpacing(item.description),
             img: item.img,
-            content: item.description
+            content: normalizeRichTextSpacing(item.description)
           }));
           setNewsData(mapped);
 
@@ -113,7 +118,7 @@ const NewsPage: React.FC = () => {
                   <Calendar size={16} /> {selectedNews.date}
                 </span>
               </div>
-              <h1 className="text-5xl md:text-9xl font-black italic text-white uppercase tracking-tighter leading-[0.8] mb-4">
+              <h1 className="text-5xl md:text-9xl font-black italic text-white uppercase tracking-tighter leading-[0.8] mb-4 break-words [overflow-wrap:anywhere]">
                 {selectedNews.title}
               </h1>
             </div>
@@ -125,7 +130,7 @@ const NewsPage: React.FC = () => {
           <div className="max-w-[1700px] mx-auto flex flex-col lg:flex-row gap-16">
             <div className="lg:w-8/12 bg-[#0A0A0A]">
               <div
-                className="text-gray-300 text-xl md:text-2xl font-bold italic leading-relaxed space-y-8 uppercase tracking-wide quill-content"
+                className="text-gray-300 text-xl md:text-2xl font-bold italic leading-relaxed space-y-8 uppercase tracking-wide quill-content break-words overflow-hidden [overflow-wrap:anywhere] [&_*]:max-w-full [&_*]:whitespace-normal [&_*]:break-words [&_*]:[overflow-wrap:anywhere]"
                 dangerouslySetInnerHTML={{ __html: bbcodeToHtml(selectedNews.content) }}
               />
 
@@ -167,7 +172,7 @@ const NewsPage: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-[#FF4D00] font-black italic text-[10px] mb-2 block uppercase tracking-widest">{news.date}</span>
-                        <h5 className="text-lg font-black italic text-white uppercase leading-tight group-hover:text-[#FF4D00] transition-colors line-clamp-2 tracking-tighter">
+                        <h5 className="text-lg font-black italic text-white uppercase leading-tight group-hover:text-[#FF4D00] transition-colors line-clamp-2 tracking-tighter break-words [overflow-wrap:anywhere]">
                           {news.title}
                         </h5>
                       </div>
@@ -228,7 +233,7 @@ const NewsPage: React.FC = () => {
               <div className="text-[#FF4D00] font-black italic text-xs mb-4 uppercase flex items-center gap-2 tracking-[0.3em]">
                 <Calendar size={16} /> {newsData[0].date}
               </div>
-              <h3 className="text-5xl md:text-[120px] font-black italic text-white leading-[0.8] uppercase tracking-tighter mb-8">
+              <h3 className="text-5xl md:text-[120px] font-black italic text-white leading-[0.8] uppercase tracking-tighter mb-8 break-words [overflow-wrap:anywhere]">
                 {newsData[0].title}
               </h3>
               <button className="flex items-center gap-4 text-[#FF4D00] font-black italic text-2xl hover:translate-x-4 transition-transform uppercase tracking-tighter">
@@ -256,10 +261,10 @@ const NewsPage: React.FC = () => {
                       <Calendar size={12} /> {getText('LABEL_LATEST', 'SON XƏBƏR')}
                     </span>
                   </div>
-                  <h4 className="text-3xl font-black italic text-white uppercase leading-tight mb-6 group-hover:text-[#FF4D00] transition-colors tracking-tighter">
+                  <h4 className="text-3xl font-black italic text-white uppercase leading-tight mb-6 group-hover:text-[#FF4D00] transition-colors tracking-tighter break-words [overflow-wrap:anywhere]">
                     {news.title}
                   </h4>
-                  <p className="text-gray-500 font-bold italic text-[10px] uppercase leading-relaxed mb-10 tracking-widest">
+                  <p className="text-gray-500 font-bold italic text-[10px] uppercase leading-relaxed mb-10 tracking-widest break-words [overflow-wrap:anywhere]">
                     {news.desc}
                   </p>
                   <button className="flex items-center gap-3 text-[#FF4D00] font-black italic text-xs hover:translate-x-2 transition-all uppercase tracking-widest">
