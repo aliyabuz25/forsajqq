@@ -1,8 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PlayCircle, Image as ImageIcon, Video, ArrowRight, Zap, Maximize2, Calendar, X } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 
 import CsPlayer from './CsPlayer';
+
+type PreparedPhoto = {
+  id: string;
+  src: string;
+  title: string;
+  album: string;
+};
+
+type PhotoGridItem =
+  | {
+    type: 'photo';
+    key: string;
+    photo: PreparedPhoto;
+  }
+  | {
+    type: 'album';
+    key: string;
+    albumTitle: string;
+    photos: PreparedPhoto[];
+  };
+
+const DEFAULT_ALBUM_KEYS = new Set([
+  '',
+  'ümumi arxiv',
+  'umumi arxiv',
+  'general archive',
+  'default'
+]);
+
+const normalizeAlbumName = (value: unknown) => String(value ?? '').trim();
+const normalizeAlbumKey = (value: string) => normalizeAlbumName(value).toLowerCase();
+const isNamedAlbum = (value: string) => !DEFAULT_ALBUM_KEYS.has(normalizeAlbumKey(value));
 
 const GalleryPage: React.FC = () => {
   const [activeType, setActiveType] = useState<'photos' | 'videos'>('photos');
@@ -12,6 +44,66 @@ const GalleryPage: React.FC = () => {
   const { getText } = useSiteContent('gallerypage');
   const lightboxRef = useRef<any>(null);
   const lightboxReadyRef = useRef(false);
+
+  const preparedPhotos = useMemo<PreparedPhoto[]>(() => {
+    if (!Array.isArray(dynamicPhotos)) return [];
+
+    return dynamicPhotos
+      .map((photo: any, index: number) => {
+        const src = String(photo?.url || photo?.path || '').trim();
+        if (!src) return null;
+
+        const album = normalizeAlbumName(photo?.album || photo?.event || '');
+        const title = String(photo?.title || photo?.alt || `Şəkil ${index + 1}`).trim() || `Şəkil ${index + 1}`;
+        const rawId = String(photo?.id ?? `${index}-${src}`);
+
+        return {
+          id: rawId,
+          src,
+          title,
+          album
+        };
+      })
+      .filter((photo): photo is PreparedPhoto => photo !== null);
+  }, [dynamicPhotos]);
+
+  const photoGridItems = useMemo<PhotoGridItem[]>(() => {
+    const items: PhotoGridItem[] = [];
+    const albumBuckets = new Map<string, { albumTitle: string; photos: PreparedPhoto[] }>();
+
+    preparedPhotos.forEach((photo, index) => {
+      if (!isNamedAlbum(photo.album)) {
+        items.push({
+          type: 'photo',
+          key: `photo-${photo.id}-${index}`,
+          photo
+        });
+        return;
+      }
+
+      const albumKey = normalizeAlbumKey(photo.album);
+      const existingAlbum = albumBuckets.get(albumKey);
+
+      if (!existingAlbum) {
+        const albumEntry = {
+          albumTitle: photo.album,
+          photos: [photo]
+        };
+        albumBuckets.set(albumKey, albumEntry);
+        items.push({
+          type: 'album',
+          key: `album-${albumKey}`,
+          albumTitle: albumEntry.albumTitle,
+          photos: albumEntry.photos
+        });
+        return;
+      }
+
+      existingAlbum.photos.push(photo);
+    });
+
+    return items;
+  }, [preparedPhotos]);
 
   const extractYoutubeId = (url: string) => {
     if (!url) return null;
@@ -87,12 +179,12 @@ const GalleryPage: React.FC = () => {
 
     const initLightbox = () => {
       const Glightbox = (window as any).GLightbox;
-      if (!mounted || !Glightbox || !dynamicPhotos.length) return;
+      if (!mounted || !Glightbox || !preparedPhotos.length) return;
 
-      const elements = dynamicPhotos.map((photo: any) => ({
-        href: photo.url || photo.path,
+      const elements = preparedPhotos.map((photo) => ({
+        href: photo.src,
         type: 'image',
-        title: photo.title || photo.alt || ''
+        title: photo.title
       }));
 
       if (lightboxRef.current) {
@@ -131,7 +223,7 @@ const GalleryPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [dynamicPhotos]);
+  }, [preparedPhotos]);
 
   useEffect(() => {
     return () => {
@@ -145,13 +237,43 @@ const GalleryPage: React.FC = () => {
     };
   }, []);
 
-  const openPhotoPreview = (index: number, photo: any) => {
-    if (lightboxReadyRef.current && lightboxRef.current) {
-      lightboxRef.current.openAt(index);
+  const openPhotoPreview = (photos: PreparedPhoto[], index = 0) => {
+    if (!Array.isArray(photos) || photos.length === 0) return;
+
+    const clampedIndex = Math.min(Math.max(index, 0), photos.length - 1);
+    const isMainCollection = photos === preparedPhotos;
+
+    if (isMainCollection && lightboxReadyRef.current && lightboxRef.current) {
+      lightboxRef.current.openAt(clampedIndex);
       return;
     }
-    const fallback = photo?.url || photo?.path;
-    if (fallback) window.open(fallback, '_blank');
+
+    const Glightbox = (window as any).GLightbox;
+    if (Glightbox) {
+      if (lightboxRef.current) {
+        try {
+          lightboxRef.current.destroy();
+        } catch {
+          // no-op
+        }
+      }
+
+      lightboxRef.current = Glightbox({
+        elements: photos.map((photo) => ({
+          href: photo.src,
+          type: 'image',
+          title: photo.title
+        })),
+        touchNavigation: true,
+        loop: true,
+        closeButton: true
+      });
+      lightboxReadyRef.current = true;
+      lightboxRef.current.openAt(clampedIndex);
+      return;
+    }
+
+    window.open(photos[clampedIndex].src, '_blank');
   };
 
   const VideoModal = () => {
@@ -233,37 +355,69 @@ const GalleryPage: React.FC = () => {
               </div>
             </div>
             <p className="text-gray-600 font-black italic text-[10px] uppercase tracking-widest">
-              {getText('TOTAL_LABEL', 'TOPLAM')} {activeType === 'photos' ? dynamicPhotos.length : dynamicVideos.length} {activeType === 'photos' ? getText('TYPE_PHOTO', 'FOTO') : getText('TYPE_VIDEO', 'VİDEO')}
+              {getText('TOTAL_LABEL', 'TOPLAM')} {activeType === 'photos' ? preparedPhotos.length : dynamicVideos.length} {activeType === 'photos' ? getText('TYPE_PHOTO', 'FOTO') : getText('TYPE_VIDEO', 'VİDEO')}
             </p>
           </div>
 
           {activeType === 'photos' ? (
             /* Photo Grid */
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-              {dynamicPhotos.length === 0 ? (
+              {photoGridItems.length === 0 ? (
                 <div className="col-span-full py-20 text-center text-gray-500 font-black italic uppercase tracking-widest">
                   {getText('NO_PHOTOS', 'HƏLƏ Kİ FOTO ƏLAVƏ EDİLMƏYİB')}
                 </div>
               ) : (
-                dynamicPhotos.map((photo: any) => (
-                  <div
-                    key={photo.id}
-                    className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300"
-                    onClick={() => openPhotoPreview(dynamicPhotos.findIndex((p: any) => p.id === photo.id), photo)}
-                  >
-                    <img
-                      src={photo.url || photo.path}
-                      className="w-full h-full object-cover grayscale opacity-60 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
-                      alt={photo.title || photo.alt}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                      <p className="text-[10px] font-black italic uppercase text-white truncate drop-shadow-md">{photo.title || photo.alt}</p>
-                      <div className="flex justify-between items-center mt-1">
-                        <Maximize2 size={12} className="text-[#FF4D00]" />
+                photoGridItems.map((item) => {
+                  if (item.type === 'album') {
+                    const cover = item.photos[0];
+                    return (
+                      <div
+                        key={item.key}
+                        className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300 border border-[#FF4D00]/20"
+                        onClick={() => openPhotoPreview(item.photos, 0)}
+                      >
+                        <img
+                          src={cover.src}
+                          className="w-full h-full object-cover grayscale opacity-50 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
+                          alt={item.albumTitle}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-3">
+                          <p className="text-[9px] font-black italic uppercase tracking-[0.2em] text-[#FF4D00] mb-1">ALBOM</p>
+                          <p className="text-[10px] font-black italic uppercase text-white drop-shadow-md line-clamp-2">{item.albumTitle}</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-[9px] font-black italic uppercase tracking-wider text-gray-300">
+                              {item.photos.length} {getText('TYPE_PHOTO', 'FOTO')}
+                            </span>
+                            <Maximize2 size={12} className="text-[#FF4D00]" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const photoIndex = preparedPhotos.findIndex((photo) => photo.id === item.photo.id);
+                  const safeIndex = photoIndex >= 0 ? photoIndex : 0;
+
+                  return (
+                    <div
+                      key={item.key}
+                      className="group/item relative aspect-square bg-[#111] overflow-hidden cursor-pointer shadow-lg hover:z-20 transition-all duration-300"
+                      onClick={() => openPhotoPreview(preparedPhotos, safeIndex)}
+                    >
+                      <img
+                        src={item.photo.src}
+                        className="w-full h-full object-cover grayscale opacity-60 transition-all duration-500 group-hover/item:scale-110 group-hover/item:grayscale-0 group-hover/item:opacity-100"
+                        alt={item.photo.title}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                        <p className="text-[10px] font-black italic uppercase text-white truncate drop-shadow-md">{item.photo.title}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <Maximize2 size={12} className="text-[#FF4D00]" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           ) : (
