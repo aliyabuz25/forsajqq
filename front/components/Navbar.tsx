@@ -289,23 +289,23 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
 
       <div
         ref={languagePickerRef}
-        className={`language-picker ${isLangOpen ? 'language-picker--open' : ''}`}
+        className={`language-picker relative ${isLangOpen ? 'language-picker--open' : ''}`}
       >
         <button
           type="button"
           onClick={() => setIsLangOpen(!isLangOpen)}
-          className="language-picker__trigger"
+          className="language-picker__trigger inline-flex items-center justify-between gap-2"
           aria-label="Select language"
           aria-haspopup="listbox"
           aria-expanded={isLangOpen}
         >
           <Globe className="language-picker__globe" />
-          <span className="language-picker__current">{language}</span>
+          <span className="language-picker__current text-xs">{language}</span>
           <ChevronDown className={`language-picker__chevron ${isLangOpen ? 'language-picker__chevron--open' : ''}`} />
         </button>
 
         {isLangOpen && (
-          <div className="language-picker__menu" role="listbox" aria-label="Language options">
+          <div className="language-picker__menu absolute right-0 z-50" role="listbox" aria-label="Language options">
             {languages.map((lang) => (
               <button
                 key={lang}
@@ -317,7 +317,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
                   applySiteLanguage(languageMap[lang] || 'az');
                   setIsLangOpen(false);
                 }}
-                className={`language-picker__item ${language === lang ? 'language-picker__item--active' : ''}`}
+                className={`language-picker__item block w-full text-left ${language === lang ? 'language-picker__item--active' : ''}`}
               >
                 {lang}
               </button>
