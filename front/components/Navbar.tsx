@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Globe, ChevronDown } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 
@@ -11,6 +11,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
   const { getPage, getText, language, setSiteLanguage } = useSiteContent('navbar');
   const { getImage: getImageGeneral } = useSiteContent('general');
   const [isLangOpen, setIsLangOpen] = useState(false);
+  const languagePickerRef = useRef<HTMLDivElement | null>(null);
   const GTRANSLATE_SCRIPT_ID = 'gtranslate-widget-script';
   const GTRANSLATE_WRAPPER_CLASS = 'gtranslate_wrapper';
   const languageMap: Record<string, string> = { AZ: 'az', RU: 'ru', ENG: 'en' };
@@ -60,6 +61,34 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
   useEffect(() => {
     applySiteLanguage(languageMap[language] || 'az');
   }, [language]);
+
+  useEffect(() => {
+    if (!isLangOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const node = languagePickerRef.current;
+      if (!node) return;
+      if (!node.contains(event.target as Node)) {
+        setIsLangOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsLangOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isLangOpen]);
 
   const navbarPage = getPage('navbar');
   const logoImg = getImageGeneral('SITE_LOGO_LIGHT').path;
@@ -258,11 +287,17 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
         ))}
       </div>
 
-      <div className="language-picker">
+      <div
+        ref={languagePickerRef}
+        className={`language-picker ${isLangOpen ? 'language-picker--open' : ''}`}
+      >
         <button
           type="button"
           onClick={() => setIsLangOpen(!isLangOpen)}
           className="language-picker__trigger"
+          aria-label="Select language"
+          aria-haspopup="listbox"
+          aria-expanded={isLangOpen}
         >
           <Globe className="language-picker__globe" />
           <span className="language-picker__current">{language}</span>
@@ -270,11 +305,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
         </button>
 
         {isLangOpen && (
-          <div className="language-picker__menu">
+          <div className="language-picker__menu" role="listbox" aria-label="Language options">
             {languages.map((lang) => (
               <button
                 key={lang}
                 type="button"
+                role="option"
+                aria-selected={language === lang}
                 onClick={() => {
                   setSiteLanguage(lang as any);
                   applySiteLanguage(languageMap[lang] || 'az');
