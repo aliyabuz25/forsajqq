@@ -8,11 +8,12 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          entryFileNames: 'assets/[name]-[hash].js',
+          // Keep JS filenames stable to avoid hash-mismatch 404s after deploy.
+          entryFileNames: 'assets/[name].js',
           chunkFileNames: (chunkInfo) => {
-            if (chunkInfo.name === 'vendor-react') return 'assets/vendor-react-[hash].js';
-            if (chunkInfo.name === 'vendor-ui') return 'assets/vendor-ui-[hash].js';
-            return 'assets/[name]-[hash].js';
+            if (chunkInfo.name === 'vendor-react') return 'assets/vendor-react.js';
+            if (chunkInfo.name === 'vendor-ui') return 'assets/vendor-ui.js';
+            return 'assets/[name].js';
           },
           assetFileNames: 'assets/[name]-[hash][extname]',
           manualChunks(id) {
