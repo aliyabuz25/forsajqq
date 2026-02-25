@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Save, Type, Image as ImageIcon, Layout, Globe, Plus, Trash2, X, Search, Calendar, FileText, Trophy, Video, Play, ChevronUp, ChevronDown, Shield, Users, Leaf, ShieldCheck, Truck, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getAuthToken } from '../utils/session';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import './VisualEditor.css';
@@ -43,6 +44,7 @@ interface EventItem {
     youtubeUrl?: string;
     pdfUrl?: string;
     status: 'planned' | 'past';
+    registrationEnabled?: boolean;
 }
 
 interface NewsItem {
@@ -127,6 +129,16 @@ const normalizeEventStatus = (rawStatus: unknown, rawDate?: string): 'planned' |
         if (date.getTime() < today.getTime()) return 'past';
     }
     return 'planned';
+};
+
+const normalizeEventRegistrationEnabled = (rawValue: unknown) => {
+    if (typeof rawValue === 'boolean') return rawValue;
+    const normalized = String(rawValue || '').trim().toLocaleLowerCase('az');
+    if (!normalized) return true;
+    if (['false', '0', 'no', 'off', 'disabled', 'deactive', 'inactive', 'bagli', 'bağlı'].includes(normalized)) {
+        return false;
+    }
+    return true;
 };
 
 const isReservedPhotoAlbum = (value?: string) => {
@@ -737,6 +749,7 @@ const VisualEditor: React.FC = () => {
     const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
     const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null);
     const [driverForm, setDriverForm] = useState<Partial<DriverItem>>({});
+    const [isSendingRankingNotice, setIsSendingRankingNotice] = useState(false);
 
     const loadContent = async () => {
         try {
@@ -1409,7 +1422,8 @@ const VisualEditor: React.FC = () => {
                 const normalizedEvents = eventsData.map((item: any) => ({
                     ...item,
                     status: normalizeEventStatus(item?.status, item?.date),
-                    youtubeUrl: String(item?.youtubeUrl || item?.youtube_url || item?.url || '').trim()
+                    youtubeUrl: String(item?.youtubeUrl || item?.youtube_url || item?.url || '').trim(),
+                    registrationEnabled: normalizeEventRegistrationEnabled(item?.registrationEnabled ?? item?.registration_enabled)
                 }));
                 setEvents(normalizedEvents);
                 if (normalizedEvents.length > 0 && selectedEventId === null) {
@@ -2408,6 +2422,7 @@ const VisualEditor: React.FC = () => {
         const toastId = toast.loading('Yadda saxlanılır...');
         try {
             const saveVersion = Date.now().toString();
+            let eventsMailNotice = '';
             if (editorMode === 'extract' || editorMode === 'event-management') {
                 const res = await fetch('/api/save-content', {
                     method: 'POST',
@@ -2422,6 +2437,21 @@ const VisualEditor: React.FC = () => {
                     body: JSON.stringify(events)
                 });
                 if (!res.ok) throw new Error(await res.text());
+                const data = await res.json().catch(() => ({} as any));
+                const addedEventsCount = Number(data?.addedEventsCount || 0);
+                const mailSent = Boolean(data?.mailSent);
+                const recipients = Number(data?.mailStatus?.recipients || 0);
+                const reason = String(data?.mailStatus?.reason || '').trim();
+
+                if (addedEventsCount > 0) {
+                    if (mailSent) {
+                        eventsMailNotice = `Yeni tədbir bildirişi ${recipients || 0} abunəçiyə göndərildi.`;
+                    } else if (reason === 'smtp_disabled' || reason === 'smtp_not_configured') {
+                        eventsMailNotice = 'Yeni tədbir əlavə olundu, amma SMTP aktiv olmadığından mail göndərilmədi.';
+                    } else {
+                        eventsMailNotice = 'Yeni tədbir əlavə olundu, lakin bildiriş maili göndərilmədi.';
+                    }
+                }
             } else if (editorMode === 'news') {
                 const res = await fetch('/api/news', {
                     method: 'POST',
@@ -2457,6 +2487,9 @@ const VisualEditor: React.FC = () => {
                 localStorage.setItem(GALLERY_VERSION_KEY, saveVersion);
             }
             toast.success('Dəyişikliklər bulud bazasına qeyd edildi!', { id: toastId });
+            if (eventsMailNotice) {
+                toast.success(eventsMailNotice);
+            }
             await loadContent();
         } catch (err: any) {
             console.error('Save error:', err);
@@ -2504,7 +2537,8 @@ const VisualEditor: React.FC = () => {
             description: '',
             rules: '',
             youtubeUrl: '',
-            status: 'planned'
+            status: 'planned',
+            registrationEnabled: true
         };
         setEvents([...events, newEvent]);
         setSelectedEventId(newId);
@@ -2966,6 +3000,45 @@ const VisualEditor: React.FC = () => {
             toast.error('Xəta baş verdi', { id: tid });
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSendDriversRankingNotification = async () => {
+        if (isSendingRankingNotice) return;
+        const token = getAuthToken();
+        if (!token) {
+            toast.error('Sessiya etibarsızdır. Yenidən daxil olun.');
+            return;
+        }
+
+        const approved = window.confirm('Sürücü sıralama bildirişini bütün abunəçilərə göndərmək istəyirsiniz?');
+        if (!approved) {
+            toast('Bildiriş göndərilməsi ləğv edildi.');
+            return;
+        }
+
+        const note = window.prompt('Bildiriş üçün qısa qeyd (istəyə bağlı):', '') ?? '';
+        setIsSendingRankingNotice(true);
+        const tid = toast.loading('Abunələrə bildiriş göndərilir...');
+        try {
+            const res = await fetch('/api/notifications/drivers-ranking', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ note, approved: true })
+            });
+            const data = await res.json().catch(() => ({} as any));
+            if (!res.ok || !data?.success) {
+                throw new Error(data?.error || 'Bildiriş göndərilə bilmədi');
+            }
+            const recipients = Number(data?.mailStatus?.recipients || 0);
+            toast.success(recipients > 0 ? `Bildiriş göndərildi (${recipients} abunəçi)` : 'Bildiriş göndərildi', { id: tid });
+        } catch (error: any) {
+            toast.error(error?.message || 'Bildiriş göndərilə bilmədi', { id: tid });
+        } finally {
+            setIsSendingRankingNotice(false);
         }
     };
 
@@ -4320,6 +4393,16 @@ const VisualEditor: React.FC = () => {
                                             <option value="past">Keçmiş</option>
                                         </select>
                                     </div>
+                                    <div className="form-group">
+                                        <label>QEYDİYYAT STATUSU</label>
+                                        <select
+                                            value={eventForm.registrationEnabled === false ? 'inactive' : 'active'}
+                                            onChange={(e) => handleEventChange('registrationEnabled', e.target.value === 'active', eventForm.id)}
+                                        >
+                                            <option value="active">Aktiv (Qeydiyyat Açıq)</option>
+                                            <option value="inactive">Deaktiv (Qeydiyyat Bağlı)</option>
+                                        </select>
+                                    </div>
                                     {eventForm.status === 'past' ? (
                                         <>
                                             <div className="form-group full-span">
@@ -4660,6 +4743,13 @@ const VisualEditor: React.FC = () => {
                                 <div className="editor-savebar">
                                     <button className="btn-primary" onClick={handleDriverSave} disabled={isSaving}>
                                         {isSaving ? 'Gözləyin...' : 'Sürücünü Yadda Saxla'}
+                                    </button>
+                                    <button
+                                        className="btn-secondary"
+                                        onClick={handleSendDriversRankingNotification}
+                                        disabled={isSendingRankingNotice || isSaving}
+                                    >
+                                        {isSendingRankingNotice ? 'Göndərilir...' : 'Sıralama Bildirişi Göndər'}
                                     </button>
                                 </div>
                             </div>

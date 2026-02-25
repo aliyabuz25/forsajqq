@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     Layout,
@@ -30,17 +30,21 @@ import {
     LogOut
 } from 'lucide-react';
 import type { SidebarItem } from '../types/navigation';
+import type { AdminLanguage } from '../utils/adminLanguage';
+import { getSidebarUiLabel, translateSidebarTitle } from '../utils/adminLanguage';
 import './Sidebar.css';
 
 interface SidebarProps {
     menuItems: SidebarItem[];
     user: any;
     onLogout: () => void;
+    language: AdminLanguage;
+    onLanguageChange: (lang: AdminLanguage) => void;
 }
 
 type SidebarGroupKey = 'content' | 'legal' | 'management';
 
-const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout, language, onLanguageChange }) => {
     const userRole = user?.role || 'secondary';
     const location = useLocation();
     const normalizeText = (value: string) =>
@@ -205,36 +209,62 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
     };
 
     const groupLabels: Record<SidebarGroupKey, string> = {
-        content: 'SAYT MƏZMUNU',
-        legal: 'HÜQUQİ SƏHİFƏLƏR',
-        management: 'İDARƏETMƏ'
+        content: getSidebarUiLabel(language, 'groupContent'),
+        legal: getSidebarUiLabel(language, 'groupLegal'),
+        management: getSidebarUiLabel(language, 'groupManagement')
     };
 
-    const preparedItems = dedupeMenuItems(filterByRole(menuItems))
-        .map((item) => ({ ...item, title: getFriendlyTitle(item.title) }))
-        .sort((a, b) => getItemOrder(a) - getItemOrder(b));
+    const preparedItems = useMemo(
+        () => dedupeMenuItems(filterByRole(menuItems))
+            .map((item) => ({ ...item, title: getFriendlyTitle(item.title) }))
+            .sort((a, b) => getItemOrder(a) - getItemOrder(b)),
+        [menuItems, userRole]
+    );
 
-    const groupedItems: Record<SidebarGroupKey, SidebarItem[]> = {
-        content: [],
-        legal: [],
-        management: []
-    };
-
-    preparedItems.forEach((item) => {
-        groupedItems[getGroupKey(item)].push(item);
-    });
+    const groupedItems = useMemo(() => {
+        const buckets: Record<SidebarGroupKey, SidebarItem[]> = {
+            content: [],
+            legal: [],
+            management: []
+        };
+        preparedItems.forEach((item) => {
+            buckets[getGroupKey(item)].push(item);
+        });
+        return buckets;
+    }, [preparedItems]);
 
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
                 <div className="brand-logo">
-                    <Hexagon className="logo-icon" size={24} fill="currentColor" />
-                    <span className="brand-name">FORSAJ<span>PANEL</span></span>
+                    <div className="logo-mark">
+                        <Hexagon className="logo-icon" size={22} fill="currentColor" />
+                    </div>
+                    <span className="brand-name">
+                        <strong>FORSAJ</strong>
+                        <span>PANEL</span>
+                    </span>
+                </div>
+                <div className="sidebar-lang-switch" aria-label="Admin language switch">
+                    <button
+                        type="button"
+                        className={`sidebar-lang-btn ${language === 'az' ? 'active' : ''}`}
+                        onClick={() => onLanguageChange('az')}
+                    >
+                        AZ
+                    </button>
+                    <button
+                        type="button"
+                        className={`sidebar-lang-btn ${language === 'ru' ? 'active' : ''}`}
+                        onClick={() => onLanguageChange('ru')}
+                    >
+                        RU
+                    </button>
                 </div>
             </div>
 
             <div className="sidebar-content">
-                <div className="sidebar-section-label">ƏSAS NAVİQASİYA</div>
+                <div className="sidebar-section-label">{getSidebarUiLabel(language, 'primaryNavigation')}</div>
                 {(['content', 'legal', 'management'] as SidebarGroupKey[]).map((groupKey) => {
                     const items = groupedItems[groupKey];
                     if (!items.length) return null;
@@ -245,9 +275,10 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
                                 {items.map(item => {
                                     const fallbackChildPath = item.children?.find(child => !!child.path)?.path;
                                     const effectivePath = item.path || fallbackChildPath;
+                                    const translatedTitle = translateSidebarTitle(item.title, effectivePath, language);
                                     return (
                                         <React.Fragment key={`${item.title}-${effectivePath || 'no-path'}`}>
-                                            {renderLinkItem(item, item.icon, effectivePath)}
+                                            {renderLinkItem({ ...item, title: translatedTitle }, item.icon, effectivePath)}
                                         </React.Fragment>
                                     );
                                 })}
@@ -257,7 +288,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
                 })}
                 {preparedItems.length === 0 && (
                     <div className="empty-sidebar-msg">
-                        <p>Menyu boşdur</p>
+                        <p>{getSidebarUiLabel(language, 'emptyMenu')}</p>
                     </div>
                 )}
             </div>
@@ -265,7 +296,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, user, onLogout }) => {
             <div className="sidebar-footer">
                 <button className="logout-btn" onClick={onLogout}>
                     <LogOut size={18} />
-                    <span>Çıxış</span>
+                    <span>{getSidebarUiLabel(language, 'logout')}</span>
                 </button>
             </div>
         </aside>

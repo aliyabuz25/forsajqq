@@ -19,6 +19,37 @@
     width: 100%;
     max-width: 400px;
     text-align: center;
+    position: relative;
+}
+
+.login-lang-switch {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 0.2rem;
+}
+
+.login-lang-btn {
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    border-radius: 999px;
+    padding: 0.24rem 0.5rem;
+    cursor: pointer;
+}
+
+.login-lang-btn.active {
+    background: #3b82f6;
+    color: white;
 }
 
 .login-logo {

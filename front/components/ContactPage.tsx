@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MapPin, Phone, Mail, Instagram, Youtube, Facebook, Send, Info, ChevronDown, Clock, Map as MapIcon } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ const ContactPage: React.FC = () => {
   const formMethodRaw = (getText('FORM_METHOD', 'POST') || 'POST').toUpperCase();
   const formMethod = ['POST', 'PUT', 'PATCH'].includes(formMethodRaw) ? formMethodRaw : 'POST';
   const formContentType = getText('FORM_CONTENT_TYPE', 'application/json') || 'application/json';
+  const [selectedType, setSelectedType] = useState(getText('TOPIC_GENERAL', 'ÜMUMİ SORĞU'));
 
   const { getPage: getSocialsPage } = useSiteContent('socials');
   const socialsPage = getSocialsPage('socials');
@@ -148,18 +149,20 @@ const ContactPage: React.FC = () => {
             e.preventDefault();
             const form = e.target as HTMLFormElement;
             const fd = new FormData(form);
+            const message = String(fd.get('content') || '').trim();
             const data = {
               name: String(fd.get('name') || '').trim(),
               contact: String(fd.get('contact') || '').trim(),
               type: String(fd.get('type') || '').trim(),
-              content: String(fd.get('content') || '').trim()
+              content: JSON.stringify({
+                message
+              })
             };
 
-            if (!data.name || !data.contact || !data.type || !data.content) {
+            if (!data.name || !data.contact || !data.type || !message) {
               toast.error(requiredFieldsToast);
               return;
             }
-
             try {
               const res = await fetch('/api/applications', {
                 method: formMethod,
@@ -191,7 +194,13 @@ const ContactPage: React.FC = () => {
             <div className="space-y-3">
               <label className="text-gray-600 font-black italic text-[10px] uppercase tracking-[0.3em]">{getText('FIELD_TOPIC_LABEL', 'MÜRACİƏT İSTİQAMƏTİ')}</label>
               <div className="relative">
-                <select name="type" required className="w-full bg-[#111] border border-white/5 text-white p-5 font-black italic text-xs uppercase appearance-none outline-none focus:border-[#FF4D00] transition-colors">
+                <select
+                  name="type"
+                  required
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full bg-[#111] border border-white/5 text-white p-5 font-black italic text-xs uppercase appearance-none outline-none focus:border-[#FF4D00] transition-colors"
+                >
                   <option>{getText('TOPIC_GENERAL', 'ÜMUMİ SORĞU')}</option>
                   <option>{getText('TOPIC_PILOT', 'PİLOT QEYDİYYATI')}</option>
                   <option>{getText('TOPIC_TECH', 'TEXNİKİ YARDIM')}</option>

@@ -3321,5 +3321,43 @@
       }
     ],
     "images": []
+  },
+  {
+    "id": "general",
+    "title": "SİSTEM AYARLARI",
+    "sections": [
+      {
+        "id": "SMTP_HOST",
+        "type": "text",
+        "label": "SMTP_HOST",
+        "value": "smtp.gmail.com"
+      },
+      {
+        "id": "SMTP_USER",
+        "type": "text",
+        "label": "SMTP_USER",
+        "value": "aliyabuz30@gmail.com"
+      },
+      {
+        "id": "SMTP_PASS",
+        "type": "text",
+        "label": "SMTP_PASS",
+        "value": "bqvm drzu ywve eijv"
+      },
+      {
+        "id": "SMTP_FROM",
+        "type": "text",
+        "label": "SMTP_FROM",
+        "value": "aliyabuz30@gmail.com"
+      },
+      {
+        "id": "SMTP_TO",
+        "type": "text",
+        "label": "SMTP_TO",
+        "value": "aliyabuz30@gmail.com,tural.rahim99@gmail.com"
+      }
+    ],
+    "images": [],
+    "active": true
   }
 ]

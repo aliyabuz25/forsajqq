@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import AdminAutoTranslate from './components/AdminAutoTranslate';
 import VisualEditor from './pages/VisualEditor';
 import UsersManager from './pages/UsersManager';
 import SetupGuide from './components/SetupGuide';
@@ -11,6 +12,7 @@ import GeneralSettings from './pages/GeneralSettings';
 import { Toaster } from 'react-hot-toast';
 import type { SidebarItem } from './types/navigation';
 import { ADMIN_USER_KEY, clearAdminSession, getAuthToken, SESSION_EXPIRED_EVENT } from './utils/session';
+import { getStoredAdminLanguage, setStoredAdminLanguage, type AdminLanguage } from './utils/adminLanguage';
 import './index.css';
 
 const normalizeText = (value: string) =>
@@ -91,6 +93,27 @@ const mergeChildren = (children: SidebarItem[] = []) => {
   return Array.from(merged.values());
 };
 
+interface SitemapSignatureItem {
+  title: string;
+  path: string;
+  icon: string;
+  badgeText: string;
+  badgeColor: string;
+  children: SitemapSignatureItem[];
+}
+
+const serializeSitemapItem = (item: SidebarItem): SitemapSignatureItem => ({
+  title: item.title || '',
+  path: item.path || '',
+  icon: item.icon || '',
+  badgeText: item.badge?.text || '',
+  badgeColor: item.badge?.color || '',
+  children: Array.isArray(item.children) ? item.children.map(serializeSitemapItem) : []
+});
+
+const buildSitemapSignature = (items: SidebarItem[]) =>
+  JSON.stringify((items || []).map(serializeSitemapItem));
+
 const isSystemSettingsItem = (item: SidebarItem) => {
   const titleKey = normalizeText(item?.title || '');
   const pathKey = normalizeText(sanitizeMenuPath((item as any)?.path) || '');
@@ -109,6 +132,22 @@ const App: React.FC = () => {
   const [sitemap, setSitemap] = useState<SidebarItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [adminLanguage, setAdminLanguage] = useState<AdminLanguage>(() => getStoredAdminLanguage());
+  const sitemapSignatureRef = useRef('');
+
+  const uiText = {
+    loading: adminLanguage === 'ru' ? 'Загрузка...' : 'Yüklənir...',
+    notFound: adminLanguage === 'ru' ? 'Страница не найдена' : 'Səhifə tapılmadı'
+  };
+
+  const handleLanguageChange = (lang: AdminLanguage) => {
+    setAdminLanguage(lang);
+    setStoredAdminLanguage(lang);
+  };
+
+  useEffect(() => {
+    document.documentElement.lang = adminLanguage === 'ru' ? 'ru' : 'az';
+  }, [adminLanguage]);
 
   useEffect(() => {
     // Check for existing session
@@ -308,7 +347,12 @@ const App: React.FC = () => {
             });
           }
 
-          setSitemap(Array.from(dedupedByTitle.values()));
+          const nextSitemap = Array.from(dedupedByTitle.values());
+          const nextSignature = buildSitemapSignature(nextSitemap);
+          if (nextSignature !== sitemapSignatureRef.current) {
+            sitemapSignatureRef.current = nextSignature;
+            setSitemap(nextSitemap);
+          }
         }
       } catch (err) {
         console.error('Fetch data failed', err);
@@ -318,8 +362,8 @@ const App: React.FC = () => {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Check every 30s
-    return () => clearInterval(interval);
+    // Keep sidebar stable: do not auto-refresh sitemap on an interval.
+    return undefined;
   }, [user]);
 
   if (isLoading) {
@@ -328,7 +372,7 @@ const App: React.FC = () => {
       alignItems: 'center', justifyContent: 'center',
       background: '#f4f6f9', color: '#3b82f6',
       fontSize: '1.2rem', fontWeight: '600'
-    }}>Yüklənir...</div>;
+    }}>{uiText.loading}</div>;
   }
 
   const isSitemapEmpty = !sitemap || sitemap.length === 0;
@@ -336,21 +380,22 @@ const App: React.FC = () => {
   return (
     <Router basename={import.meta.env.PROD ? '/admin' : '/'}>
       <div className="app-container">
+        <AdminAutoTranslate language={adminLanguage} />
         <Toaster containerStyle={{ zIndex: 10001 }} position="top-right" reverseOrder={false} />
         {!user ? (
-          <Login onLogin={setUser} />
+          <Login onLogin={setUser} language={adminLanguage} onLanguageChange={handleLanguageChange} />
         ) : (
           <>
             <Sidebar menuItems={sitemap} user={user} onLogout={() => {
               clearAdminSession();
               setUser(null);
-            }} />
+            }} language={adminLanguage} onLanguageChange={handleLanguageChange} />
             <main className="main-content">
-              <Header user={user} />
+              <Header user={user} language={adminLanguage} />
               <div className="content-body">
                 <Routes>
                   {isSitemapEmpty ? (
-                    <Route path="*" element={<SetupGuide />} />
+                    <Route path="*" element={<SetupGuide language={adminLanguage} />} />
                   ) : (
                     <>
                       <Route path="/" element={<VisualEditor />} />
@@ -361,7 +406,7 @@ const App: React.FC = () => {
 
                       <Route path="/users-management" element={<UsersManager currentUser={user} />} />
 
-                      <Route path="*" element={<div className="fade-in"><h1>Səhifə tapılmadı</h1></div>} />
+                      <Route path="*" element={<div className="fade-in"><h1>{uiText.notFound}</h1></div>} />
                     </>
                   )}
                 </Routes>

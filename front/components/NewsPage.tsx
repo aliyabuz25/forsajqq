@@ -140,15 +140,15 @@ const NewsPage: React.FC = () => {
     return (
       <div className="bg-[#0A0A0A] min-h-screen pb-24 text-white">
         {/* Detail Header */}
-        <div className="relative h-[50vh] md:h-[65vh] overflow-hidden">
+        <div className="relative isolate h-[50vh] md:h-[65vh] overflow-hidden">
           <img
             src={selectedNews.img}
-            className="w-full h-full object-cover grayscale brightness-[0.2]"
+            className="absolute inset-0 w-full h-full object-cover grayscale brightness-[0.2]"
             alt={selectedNews.title}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-black/40"></div>
+          <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-black/40"></div>
 
-          <div className="absolute top-8 left-6 lg:left-20">
+          <div className="absolute top-8 left-6 lg:left-20 z-10">
             <button
               onClick={() => setSelectedNews(null)}
               className="bg-[#FF4D00] text-black px-8 py-3 font-black italic text-xs transition-all uppercase tracking-widest transform -skew-x-12 flex items-center gap-2 hover:bg-white"
@@ -157,14 +157,14 @@ const NewsPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="absolute bottom-12 left-6 lg:left-20 right-6">
+          <div className="absolute bottom-12 left-6 lg:left-20 right-6 z-10">
             <div className="max-w-5xl">
               <div className="flex items-center gap-4 mb-6">
                 <span className="text-[#FF4D00] font-black italic text-xs flex items-center gap-2 uppercase tracking-[0.3em]">
                   <Calendar size={16} /> {selectedNews.date}
                 </span>
               </div>
-              <h1 className="text-5xl md:text-9xl font-black italic text-white uppercase tracking-tighter leading-[0.8] mb-4 break-words [overflow-wrap:anywhere]">
+              <h1 className="text-[clamp(2rem,6.5vw,5.5rem)] font-black italic text-white uppercase tracking-tighter leading-[0.84] mb-4 break-words [overflow-wrap:anywhere]">
                 {selectedNews.title}
               </h1>
             </div>
@@ -279,7 +279,7 @@ const NewsPage: React.FC = () => {
               <div className="text-[#FF4D00] font-black italic text-xs mb-4 uppercase flex items-center gap-2 tracking-[0.3em]">
                 <Calendar size={16} /> {newsData[0].date}
               </div>
-              <h3 className="text-5xl md:text-[120px] font-black italic text-white leading-[0.8] uppercase tracking-tighter mb-8 break-words [overflow-wrap:anywhere]">
+              <h3 className="text-[clamp(1.9rem,6vw,5.8rem)] font-black italic text-white leading-[0.84] uppercase tracking-tighter mb-8 break-words [overflow-wrap:anywhere]">
                 {newsData[0].title}
               </h3>
               <button className="flex items-center gap-4 text-[#FF4D00] font-black italic text-2xl hover:translate-x-4 transition-transform uppercase tracking-tighter">

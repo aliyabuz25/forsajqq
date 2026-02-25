@@ -31,12 +31,20 @@ type FrontView =
   | 'privacy'
   | 'terms';
 
+type EventsOpenMode = 'default' | 'force-list';
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<FrontView>('home');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [eventsOpenMode, setEventsOpenMode] = useState<EventsOpenMode>('default');
 
   const handleViewChange = (view: FrontView, category: string | null = null) => {
-    setCurrentView(view);
+    setCurrentView((prevView) => {
+      if (view === 'events') {
+        setEventsOpenMode(prevView === 'contact' ? 'force-list' : 'default');
+      }
+      return view;
+    });
     setActiveCategory(category);
     window.scrollTo(0, 0);
   };
@@ -69,6 +77,12 @@ const App: React.FC = () => {
         const newsId = Number(rawNewsId);
         if (Number.isFinite(newsId)) {
           sessionStorage.setItem(SELECTED_NEWS_ID_KEY, String(newsId));
+        }
+      }
+      if (resolvedView === 'events') {
+        const eventId = Number(rawNewsId);
+        if (Number.isFinite(eventId)) {
+          sessionStorage.setItem('forsaj_events_target_event', JSON.stringify({ id: eventId }));
         }
       }
 
@@ -167,7 +181,12 @@ const App: React.FC = () => {
         {currentView === 'home' && <Home onViewChange={(view, cat) => handleViewChange(view, cat || null)} />}
         {currentView === 'about' && <About />}
         {currentView === 'news' && <NewsPage />}
-        {currentView === 'events' && <EventsPage onViewChange={(view) => handleViewChange(view, null)} />}
+        {currentView === 'events' && (
+          <EventsPage
+            openMode={eventsOpenMode}
+            onViewChange={(view) => handleViewChange(view, null)}
+          />
+        )}
         {currentView === 'drivers' && <DriversPage initialCategoryId={activeCategory} />}
         {currentView === 'rules' && <RulesPage />}
         {currentView === 'contact' && <ContactPage />}

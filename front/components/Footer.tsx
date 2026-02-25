@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Instagram, Youtube, Facebook, ArrowRight, MapPin, Phone } from 'lucide-react';
+import { Instagram, Youtube, Facebook, ArrowRight, MapPin } from 'lucide-react';
 import { useSiteContent } from '../hooks/useSiteContent';
 import { resolveSocialLinks } from '../utils/socialLinks';
 import toast from 'react-hot-toast';
@@ -19,7 +19,6 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
   const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false);
   const footerAbout = getText('FOOTER_ABOUT_TEXT', 'Azərbaycanın ən prestijli motorsport mərkəzi. Sərhədsiz offroad həyəcanını bizimlə yaşayın.');
   const addressLabel = getText('FOOTER_ADDRESS_LABEL', 'ÜNVAN');
-  const contactLabel = getText('FOOTER_CONTACT_LABEL', 'ƏLAQƏ');
   const navTitle = getText('FOOTER_NAV_TITLE', 'NAVİQASİYA');
   const motorsportTitle = getText('FOOTER_MOTORSPORT_TITLE', 'MOTORSPORT');
   const newsletterTitle = getText('FOOTER_NEWSLETTER_TITLE', 'XƏBƏRDAR OL');
@@ -206,15 +205,29 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
     };
 
     try {
-      const res = await fetch('/api/applications', {
+      const res = await fetch('/api/subscribers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          email,
+          name: payload.name,
+          source: 'footer-newsletter'
+        })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error || 'request_failed');
       }
+
+      // Keep admin inbox visibility for newsletter subscriptions (best effort).
+      fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {
+        // no-op
+      });
+
       toast.success(newsletterSuccessToast);
       setNewsletterEmail('');
     } catch {
@@ -300,17 +313,6 @@ const Footer: React.FC<FooterProps> = ({ onViewChange }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 text-gray-500 group">
-              <div className="bg-white/5 p-3 rounded-sm text-[#FF4D00]">
-                <Phone size={18} />
-              </div>
-              <div>
-                <p className="text-[9px] font-black italic uppercase tracking-widest text-[#FF4D00] mb-1">{contactLabel}</p>
-                <p className="text-[11px] font-bold italic uppercase leading-none">
-                  {getGeneralText('CONTACT_PHONE') || '+994 50 123 45 67'}
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 

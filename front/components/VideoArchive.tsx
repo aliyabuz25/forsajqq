@@ -57,7 +57,8 @@ const VideoArchive: React.FC<VideoArchiveProps> = ({ onViewChange }) => {
                 videoId: videoId,
                 thumbnail: v.thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : '')
               };
-            });
+            })
+            .filter((video: any) => !!video.videoId);
           setVideos(mapped);
         }
       } catch (err) {
@@ -82,7 +83,7 @@ const VideoArchive: React.FC<VideoArchiveProps> = ({ onViewChange }) => {
             <X size={40} strokeWidth={1.5} />
           </button>
 
-          <CsPlayer videoId={playingVideoId} />
+          <CsPlayer videoId={playingVideoId} autoplay />
         </div>
       </div>
     );
@@ -116,7 +117,10 @@ const VideoArchive: React.FC<VideoArchiveProps> = ({ onViewChange }) => {
         {videos.map((video, idx) => (
           <div
             key={idx}
-            onClick={() => setPlayingVideoId(video.videoId)}
+            onClick={() => {
+              if (!video.videoId) return;
+              setPlayingVideoId(video.videoId);
+            }}
             className="group relative aspect-[3/4] overflow-hidden bg-[#111] cursor-pointer shadow-2xl rounded-sm border border-white/5"
           >
             <img

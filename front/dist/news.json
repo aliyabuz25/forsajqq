@@ -52,5 +52,32 @@
     "description": "Klub üzvləri Şahdağın ən çətin zirvələrinə doğru yola çıxırlar.",
     "category": "EKSPEDİSİYA",
     "status": "published"
+  },
+  {
+    "id": 301,
+    "title": "2026 Mövsüm Təqvimi Açıqlandı",
+    "date": "2026-02-20",
+    "img": "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?q=80&w=2070&auto=format&fit=crop",
+    "description": "Forsaj Club 2026 mövsümü üçün tədbir təqvimini təqdim etdi. Qeydiyyat mərhələləri mart ayından başlayır.",
+    "category": "XƏBƏRLƏR",
+    "status": "published"
+  },
+  {
+    "id": 302,
+    "title": "Texniki Komissiya Yenilənmiş Qaydaları Paylaşdı",
+    "date": "2026-02-18",
+    "img": "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=2070&auto=format&fit=crop",
+    "description": "Təhlükəsizlik və təkər standartları üzrə yenilənmiş qaydalar iştirakçılara göndərildi.",
+    "category": "QAYDALAR",
+    "status": "published"
+  },
+  {
+    "id": 303,
+    "title": "Yeni Sürücü Qeydiyyatı Rekordu",
+    "date": "2026-02-16",
+    "img": "https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=2070&auto=format&fit=crop",
+    "description": "Bu həftə ərzində rekord sayda yeni pilot ilkin qeydiyyatdan keçib.",
+    "category": "ANONS",
+    "status": "published"
   }
 ]

@@ -149,9 +149,10 @@ const NEWS_FILE_PATH = path.join(FRONT_PUBLIC_DIR, 'news.json');
 const GALLERY_PHOTOS_FILE_PATH = path.join(FRONT_PUBLIC_DIR, 'gallery-photos.json');
 const VIDEOS_FILE_PATH = path.join(FRONT_PUBLIC_DIR, 'videos.json');
 const DRIVERS_FILE_PATH = path.join(FRONT_PUBLIC_DIR, 'drivers.json');
+const SUBSCRIBERS_FILE_PATH = path.join(WEB_DATA_DIR, 'subscribers.json');
 const SITE_NEW_STRUCT_PATH = path.join(WEB_DATA_DIR, 'site-new-struct.json');
 const SITE_NEW_STRUCT_ID = 'site-new-struct';
-const SITE_NEW_STRUCT_RESOURCE_IDS = ['site-content', 'events', 'news', 'gallery-photos', 'videos', 'drivers'];
+const SITE_NEW_STRUCT_RESOURCE_IDS = ['site-content', 'events', 'news', 'gallery-photos', 'videos', 'drivers', 'subscribers'];
 
 // Ensure runtime directories exist in fresh deployments (especially with empty volumes).
 const ensureRuntimeDirs = () => {
@@ -173,7 +174,8 @@ const CONTENT_FILE_PATHS = {
     'news': NEWS_FILE_PATH,
     'gallery-photos': GALLERY_PHOTOS_FILE_PATH,
     'videos': VIDEOS_FILE_PATH,
-    'drivers': DRIVERS_FILE_PATH
+    'drivers': DRIVERS_FILE_PATH,
+    'subscribers': SUBSCRIBERS_FILE_PATH
 };
 
 let dbReady = false;
@@ -497,6 +499,24 @@ const saveContent = async (id, data) => {
 const normalizeListPayload = (value) => {
     if (!Array.isArray(value)) return null;
     return normalizeListResource(value);
+};
+
+const isRegistrationEnabled = (rawValue, fallback = true) => {
+    if (typeof rawValue === 'boolean') return rawValue;
+    const normalized = String(rawValue || '').trim().toLowerCase();
+    if (!normalized) return fallback;
+    if (['false', '0', 'no', 'off', 'disabled', 'deactive', 'inactive', 'bagli', 'bağlı'].includes(normalized)) {
+        return false;
+    }
+    return true;
+};
+
+const normalizeEventItems = (list) => {
+    if (!Array.isArray(list)) return [];
+    return list.map((item) => ({
+        ...(isPlainObject(item) ? item : {}),
+        registrationEnabled: isRegistrationEnabled(item?.registrationEnabled ?? item?.registration_enabled, true)
+    }));
 };
 
 const normalizeSettingId = (value) => String(value || '').trim().toUpperCase();
@@ -868,6 +888,457 @@ const getTextExcerpt = (value, limit = 180) => {
     return `${plain.slice(0, limit - 1).trimEnd()}…`;
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const PHONE_DIGIT_REGEX = /\d+/g;
+
+const normalizeSubscriberEmail = (value) => {
+    const email = String(value || '').trim().toLowerCase();
+    if (!email) return '';
+    return EMAIL_REGEX.test(email) ? email : '';
+};
+
+const safeParseJsonObject = (raw) => {
+    const source = String(raw || '').trim();
+    if (!source.startsWith('{')) return null;
+    try {
+        const parsed = JSON.parse(source);
+        return isPlainObject(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+};
+
+const isNewsletterType = (value) => String(value || '')
+    .trim()
+    .toLowerCase()
+    .includes('newsletter');
+
+const normalizeLocaleCode = (value) => {
+    const locale = String(value || '').trim().toUpperCase();
+    if (locale === 'RU') return 'RU';
+    if (locale === 'EN' || locale === 'ENG') return 'EN';
+    return 'AZ';
+};
+
+const normalizeWhatsAppNumber = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    let cleaned = raw.replace(/[^\d+]/g, '');
+    if (cleaned.startsWith('00')) cleaned = `+${cleaned.slice(2)}`;
+    if (!cleaned.startsWith('+')) {
+        const digits = (cleaned.match(PHONE_DIGIT_REGEX) || []).join('');
+        if (!digits) return '';
+        if (digits.startsWith('994')) cleaned = `+${digits}`;
+        else if (digits.startsWith('0')) cleaned = `+994${digits.slice(1)}`;
+        else cleaned = `+${digits}`;
+    }
+    const digitCount = (cleaned.match(PHONE_DIGIT_REGEX) || []).join('').length;
+    if (digitCount < 10 || digitCount > 15) return '';
+    return cleaned;
+};
+
+const toTwilioWhatsAppAddress = (phone) => {
+    const value = String(phone || '').trim();
+    if (!value) return '';
+    return value.startsWith('whatsapp:') ? value : `whatsapp:${value}`;
+};
+
+const resolveWhatsAppSettings = () => {
+    const enabled = ['1', 'true', 'yes', 'on'].includes(String(process.env.WHATSAPP_ENABLED || '0').trim().toLowerCase());
+    const accountSid = String(process.env.TWILIO_ACCOUNT_SID || '').trim();
+    const authToken = String(process.env.TWILIO_AUTH_TOKEN || '').trim();
+    const fromRaw = String(process.env.TWILIO_WHATSAPP_FROM || '').trim();
+    const organizerRaw = String(process.env.ORGANIZER_WHATSAPP_TO || '').trim();
+    const organizerTargets = organizerRaw
+        .split(',')
+        .map((item) => normalizeWhatsAppNumber(item))
+        .filter(Boolean);
+
+    return {
+        enabled,
+        accountSid,
+        authToken,
+        from: toTwilioWhatsAppAddress(fromRaw),
+        organizerTargets
+    };
+};
+
+const sendTwilioWhatsAppMessage = async ({ accountSid, authToken, from, to, body }) => {
+    const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`;
+    const payload = new URLSearchParams({
+        From: from,
+        To: toTwilioWhatsAppAddress(to),
+        Body: String(body || '')
+    });
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: payload.toString()
+    });
+    if (!response.ok) {
+        const message = await response.text().catch(() => '');
+        throw new Error(`twilio_error_${response.status}${message ? `:${message}` : ''}`);
+    }
+    return response.json().catch(() => ({}));
+};
+
+const buildPilotWhatsAppMessage = ({ locale, toOrganizer, name, eventTitle, whatsapp }) => {
+    const lang = normalizeLocaleCode(locale);
+    if (toOrganizer) {
+        if (lang === 'RU') {
+            return `Новая заявка пилота получена.\nИмя: ${name}\nWhatsApp: ${whatsapp}\nСобытие: ${eventTitle || '-'}\nСтатус: Заявка принята, ожидает проверки.`;
+        }
+        if (lang === 'EN') {
+            return `New pilot application received.\nName: ${name}\nWhatsApp: ${whatsapp}\nEvent: ${eventTitle || '-'}\nStatus: Application received and pending review.`;
+        }
+        return `Yeni pilot müraciəti daxil oldu.\nAd: ${name}\nWhatsApp: ${whatsapp}\nTədbir: ${eventTitle || '-'}\nStatus: Müraciət qəbul edildi, yoxlama gözləyir.`;
+    }
+
+    if (lang === 'RU') {
+        return `Здравствуйте, ${name}!\nМы получили вашу заявку на участие.\nОчень скоро свяжемся с вами в WhatsApp.\nСобытие: ${eventTitle || '-'}`;
+    }
+    if (lang === 'EN') {
+        return `Hello ${name}!\nWe have received your application.\nWe will contact you very soon via WhatsApp.\nEvent: ${eventTitle || '-'}`;
+    }
+    return `Salam ${name}!\nBaşvurunuzu aldıq, çox yaxında sizinlə WhatsApp üzərindən əlaqə saxlanılacaq.\nTədbir: ${eventTitle || '-'}`;
+};
+
+const sendPilotApplicationWhatsAppNotifications = async ({ name, whatsapp, eventTitle, locale }) => {
+    const settings = resolveWhatsAppSettings();
+    if (!settings.enabled) return { sent: false, reason: 'whatsapp_disabled' };
+    if (!settings.accountSid || !settings.authToken || !settings.from) {
+        return { sent: false, reason: 'whatsapp_not_configured' };
+    }
+
+    const candidatePhone = normalizeWhatsAppNumber(whatsapp);
+    if (!candidatePhone) return { sent: false, reason: 'invalid_candidate_whatsapp' };
+
+    const deliveries = [];
+
+    try {
+        await sendTwilioWhatsAppMessage({
+            accountSid: settings.accountSid,
+            authToken: settings.authToken,
+            from: settings.from,
+            to: candidatePhone,
+            body: buildPilotWhatsAppMessage({
+                locale,
+                toOrganizer: false,
+                name,
+                eventTitle,
+                whatsapp: candidatePhone
+            })
+        });
+        deliveries.push({ target: 'candidate', to: candidatePhone, sent: true });
+    } catch (error) {
+        deliveries.push({ target: 'candidate', to: candidatePhone, sent: false, error: error?.message || 'candidate_send_failed' });
+    }
+
+    for (const organizerPhone of settings.organizerTargets) {
+        try {
+            await sendTwilioWhatsAppMessage({
+                accountSid: settings.accountSid,
+                authToken: settings.authToken,
+                from: settings.from,
+                to: organizerPhone,
+                body: buildPilotWhatsAppMessage({
+                    locale,
+                    toOrganizer: true,
+                    name,
+                    eventTitle,
+                    whatsapp: candidatePhone
+                })
+            });
+            deliveries.push({ target: 'organizer', to: organizerPhone, sent: true });
+        } catch (error) {
+            deliveries.push({ target: 'organizer', to: organizerPhone, sent: false, error: error?.message || 'organizer_send_failed' });
+        }
+    }
+
+    const sentCount = deliveries.filter((item) => item.sent).length;
+    if (!sentCount) {
+        return { sent: false, reason: 'whatsapp_send_failed', deliveries };
+    }
+
+    return {
+        sent: true,
+        sentCount,
+        deliveries,
+        organizerConfigured: settings.organizerTargets.length > 0
+    };
+};
+
+const sanitizeSubscribers = (items) => {
+    const list = Array.isArray(items) ? items : [];
+    const dedupe = new Map();
+
+    for (const item of list) {
+        const email = normalizeSubscriberEmail(item?.email);
+        if (!email) continue;
+        const normalized = {
+            email,
+            name: String(item?.name || '').trim(),
+            source: String(item?.source || '').trim() || 'site',
+            active: item?.active !== false,
+            subscribed_at: String(item?.subscribed_at || '').trim() || new Date().toISOString()
+        };
+        dedupe.set(email, normalized);
+    }
+
+    return Array.from(dedupe.values());
+};
+
+const getStoredSubscribers = async () => {
+    const raw = await getContent('subscribers', []);
+    return sanitizeSubscribers(raw);
+};
+
+const saveSubscribers = async (subscribers) => {
+    const normalized = sanitizeSubscribers(subscribers);
+    return saveContent('subscribers', normalized);
+};
+
+const upsertSubscriber = async ({ email, name = '', source = 'site' }) => {
+    const normalizedEmail = normalizeSubscriberEmail(email);
+    if (!normalizedEmail) return { ok: false, reason: 'invalid_email' };
+
+    const current = await getStoredSubscribers();
+    const byEmail = new Map(current.map((subscriber) => [subscriber.email, subscriber]));
+    const existing = byEmail.get(normalizedEmail);
+
+    byEmail.set(normalizedEmail, {
+        email: normalizedEmail,
+        name: String(name || existing?.name || '').trim(),
+        source: String(source || existing?.source || 'site').trim() || 'site',
+        active: true,
+        subscribed_at: existing?.subscribed_at || new Date().toISOString()
+    });
+
+    const ok = await saveSubscribers(Array.from(byEmail.values()));
+    return { ok, email: normalizedEmail };
+};
+
+const getLegacyNewsletterSubscribersFromApplications = async () => {
+    if (!dbReady) return [];
+
+    try {
+        const [rows] = await pool.query('SELECT name, contact, type, content FROM applications ORDER BY id DESC LIMIT 5000');
+        const emails = new Map();
+
+        for (const row of Array.isArray(rows) ? rows : []) {
+            const type = String(row?.type || '').trim();
+            const content = String(row?.content || '').trim();
+            const contact = String(row?.contact || '').trim();
+            const parsed = safeParseJsonObject(content);
+            const source = String(parsed?.source || '').trim().toLowerCase();
+            const candidateEmail = normalizeSubscriberEmail(parsed?.email || contact);
+            if (!candidateEmail) continue;
+
+            if (!isNewsletterType(type) && !source.includes('newsletter')) continue;
+            if (!emails.has(candidateEmail)) {
+                emails.set(candidateEmail, {
+                    email: candidateEmail,
+                    name: String(row?.name || '').trim(),
+                    source: source || 'applications',
+                    active: true,
+                    subscribed_at: new Date().toISOString()
+                });
+            }
+        }
+
+        return Array.from(emails.values());
+    } catch (error) {
+        console.warn('[subscribers] failed to read legacy newsletter applications:', error?.message || error);
+        return [];
+    }
+};
+
+const getAllActiveSubscriberEmails = async () => {
+    const [stored, legacy] = await Promise.all([
+        getStoredSubscribers(),
+        getLegacyNewsletterSubscribersFromApplications()
+    ]);
+
+    const all = sanitizeSubscribers([...(stored || []), ...(legacy || [])]);
+    return Array.from(new Set(
+        all
+            .filter((subscriber) => subscriber.active !== false)
+            .map((subscriber) => normalizeSubscriberEmail(subscriber.email))
+            .filter(Boolean)
+    ));
+};
+
+const sendBulkSubscriberEmail = async ({ subject, introText, htmlContent, textContent }) => {
+    const recipients = await getAllActiveSubscriberEmails();
+    if (!recipients.length) return { sent: false, reason: 'no_subscribers', recipients: 0 };
+
+    const smtp = await resolveSmtpSettings();
+    if (!smtp.enabled) return { sent: false, reason: 'smtp_disabled', recipients: recipients.length };
+    if (!smtp.host || !smtp.from) return { sent: false, reason: 'smtp_not_configured', recipients: recipients.length };
+
+    const transport = nodemailer.createTransport({
+        host: smtp.host,
+        port: smtp.port,
+        secure: smtp.secure,
+        auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined
+    });
+
+    const safeSiteName = escapeHtml(smtp.siteName || 'Forsaj Club');
+    const safeSubject = escapeHtml(subject || `${smtp.siteName || 'Forsaj Club'} bildirişi`);
+    const safeIntro = escapeHtml(introText || 'Yeni bildiriş');
+    const logoAsset = resolveInlineLogoAttachment(FORCED_MAIL_LOGO_URL || smtp.logoUrl);
+    const headerLogo = logoAsset.src
+        ? `<img src="${escapeHtml(logoAsset.src)}" alt="${safeSiteName}" style="height:44px;max-width:220px;width:auto;display:block;object-fit:contain;" />`
+        : `<div style="font-size:22px;font-weight:900;letter-spacing:0.02em;color:#f9fafb;">${safeSiteName}</div>`;
+
+    const htmlBody = `
+      <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${safeSubject}</div>
+      <div style="background:#020617;padding:28px 0;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:720px;margin:0 auto;background:#0b1220;border-radius:16px;overflow:hidden;border:1px solid #1e293b;">
+          <tr><td style="background:#020617;padding:0;"><div style="height:4px;background:linear-gradient(90deg,#f97316,#fb923c,#fdba74);"></div></td></tr>
+          <tr>
+            <td style="background:#050505;padding:24px 30px;border-bottom:1px solid #1f2937;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr><td>${headerLogo}</td><td style="text-align:right;color:#f97316;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Bildiriş</td></tr></table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px;">
+              <h2 style="margin:0 0 16px;font-size:24px;line-height:1.3;color:#f9fafb;">${safeSubject}</h2>
+              <p style="margin:0 0 18px;color:#94a3b8;font-size:13px;line-height:1.6;">${safeIntro}</p>
+              <div style="margin-top:8px;border:1px solid #1f2937;border-radius:12px;padding:16px;background:#111827;color:#d1d5db;">
+                ${htmlContent}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    const batchSize = 50;
+    let sentBatches = 0;
+    for (let index = 0; index < recipients.length; index += batchSize) {
+        const batch = recipients.slice(index, index + batchSize);
+        await transport.sendMail({
+            from: smtp.from || smtp.user,
+            to: smtp.from || smtp.user,
+            bcc: batch.join(', '),
+            subject,
+            text: textContent,
+            html: htmlBody,
+            attachments: logoAsset.attachments
+        });
+        sentBatches += 1;
+    }
+
+    return { sent: true, recipients: recipients.length, batches: sentBatches };
+};
+
+const extractNewEvents = (previousList, nextList) => {
+    const previous = Array.isArray(previousList) ? previousList : [];
+    const next = Array.isArray(nextList) ? nextList : [];
+
+    const previousIds = new Set(previous.map((item) => String(item?.id || '').trim()).filter(Boolean));
+    const previousKeys = new Set(previous.map((item) => {
+        const title = String(item?.title || '').trim().toLowerCase();
+        const date = String(item?.date || '').trim();
+        return `${title}|${date}`;
+    }));
+
+    return next.filter((item) => {
+        const id = String(item?.id || '').trim();
+        const title = String(item?.title || '').trim().toLowerCase();
+        const date = String(item?.date || '').trim();
+        const key = `${title}|${date}`;
+        if (id && previousIds.has(id)) return false;
+        if (previousKeys.has(key)) return false;
+        return true;
+    });
+};
+
+const notifySubscribersAboutNewEvents = async (addedEvents, req = null) => {
+    const events = Array.isArray(addedEvents) ? addedEvents : [];
+    if (!events.length) return { sent: false, reason: 'no_new_events' };
+    const baseUrl = req
+        ? getRequestBaseUrl(req)
+        : (String(process.env.PUBLIC_SITE_URL || process.env.SITE_URL || '').trim() || 'http://localhost:3005');
+
+    const headline = events.length === 1
+        ? `Yeni tədbir əlavə olundu: ${String(events[0]?.title || '').trim() || 'Tədbir'}`
+        : `${events.length} yeni tədbir əlavə olundu`;
+
+    const eventLines = events.map((event) => {
+        const title = String(event?.title || 'Tədbir').trim();
+        const date = String(event?.date || '').trim();
+        const location = String(event?.location || '').trim();
+        const eventUrl = `${baseUrl}/?view=events&id=${encodeURIComponent(String(event?.id || ''))}`;
+        return `• ${title}${date ? ` — ${date}` : ''}${location ? ` (${location})` : ''}${event?.id ? `\n  ${eventUrl}` : ''}`;
+    });
+
+    const htmlList = events.map((event) => {
+        const title = escapeHtml(String(event?.title || 'Tədbir').trim());
+        const date = escapeHtml(String(event?.date || '').trim());
+        const location = escapeHtml(String(event?.location || '').trim());
+        const eventUrl = `${baseUrl}/?view=events&id=${encodeURIComponent(String(event?.id || ''))}`;
+        const safeEventUrl = escapeHtml(eventUrl);
+        const linkHtml = event?.id
+            ? `<div style="margin-top:4px;"><a href="${safeEventUrl}" target="_blank" rel="noopener noreferrer" style="color:#f97316;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:0.02em;">Tədbir səhifəsini aç</a></div>`
+            : '';
+        return `<li style="margin:0 0 10px;"><strong style="color:#f9fafb;">${title}</strong>${date ? ` — <span style="color:#fdba74;">${date}</span>` : ''}${location ? ` <span style="color:#9ca3af;">(${location})</span>` : ''}${linkHtml}</li>`;
+    }).join('');
+
+    return sendBulkSubscriberEmail({
+        subject: headline,
+        introText: 'Tədbir təqvimi yeniləndi. Əlavə olunan tədbirləri aşağıda görə bilərsiniz.',
+        htmlContent: `<ul style="margin:0;padding-left:18px;line-height:1.7;">${htmlList}</ul>`,
+        textContent: [headline, '', ...eventLines].join('\n')
+    });
+};
+
+const notifySubscribersAboutDriversRankingChange = async (note = '') => {
+    const drivers = await getContent('drivers', []);
+    const categories = Array.isArray(drivers) ? drivers : [];
+    if (!categories.length) return { sent: false, reason: 'no_drivers_data' };
+
+    const summaryLines = categories.map((category) => {
+        const catName = String(category?.name || category?.id || 'Kateqoriya').trim();
+        const topDrivers = (Array.isArray(category?.drivers) ? category.drivers : [])
+            .slice()
+            .sort((a, b) => Number(a?.rank || 9999) - Number(b?.rank || 9999))
+            .slice(0, 3)
+            .map((driver) => `#${driver?.rank || '-'} ${String(driver?.name || 'Sürücü').trim()}`)
+            .join(', ');
+        return `• ${catName}: ${topDrivers || 'Məlumat yoxdur'}`;
+    });
+
+    const htmlRows = categories.map((category) => {
+        const catName = escapeHtml(String(category?.name || category?.id || 'Kateqoriya').trim());
+        const topDrivers = (Array.isArray(category?.drivers) ? category.drivers : [])
+            .slice()
+            .sort((a, b) => Number(a?.rank || 9999) - Number(b?.rank || 9999))
+            .slice(0, 3)
+            .map((driver) => `<span style="display:inline-block;margin-right:6px;">#${escapeHtml(String(driver?.rank || '-'))} ${escapeHtml(String(driver?.name || 'Sürücü').trim())}</span>`)
+            .join('');
+        return `<li style="margin:0 0 8px;"><strong style="color:#f9fafb;">${catName}</strong><div style="margin-top:4px;color:#d1d5db;">${topDrivers || 'Məlumat yoxdur'}</div></li>`;
+    }).join('');
+
+    const cleanNote = String(note || '').trim();
+    const header = 'Pilot sıralamasında yenilənmə';
+    const textParts = [header];
+    if (cleanNote) textParts.push(`Qeyd: ${cleanNote}`);
+    textParts.push('', ...summaryLines);
+
+    return sendBulkSubscriberEmail({
+        subject: header,
+        introText: cleanNote || 'Sürücü reytinqində yenilənmə edildi. Yeni top sıralama aşağıdadır.',
+        htmlContent: `<ul style="margin:0;padding-left:18px;line-height:1.7;">${htmlRows}</ul>`,
+        textContent: textParts.join('\n')
+    });
+};
+
 const getRequestBaseUrl = (req) => {
     const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
     const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
@@ -892,7 +1363,8 @@ const migrateFilesToDB = async () => {
         { id: 'news', path: NEWS_FILE_PATH },
         { id: 'gallery-photos', path: GALLERY_PHOTOS_FILE_PATH },
         { id: 'videos', path: VIDEOS_FILE_PATH },
-        { id: 'drivers', path: DRIVERS_FILE_PATH }
+        { id: 'drivers', path: DRIVERS_FILE_PATH },
+        { id: 'subscribers', path: SUBSCRIBERS_FILE_PATH }
     ];
 
     for (const file of filesToMigrate) {
@@ -1035,6 +1507,34 @@ app.post('/api/gallery-photos', async (req, res) => {
     }
 });
 
+// API: Subscribe Newsletter
+app.post('/api/subscribers', async (req, res) => {
+    try {
+        const email = normalizeSubscriberEmail(req.body?.email);
+        const name = String(req.body?.name || '').trim();
+        const source = String(req.body?.source || 'site').trim() || 'site';
+        if (!email) return res.status(400).json({ error: 'Düzgün email daxil edin' });
+
+        const result = await upsertSubscriber({ email, name, source });
+        if (!result.ok) return res.status(500).json({ error: 'Abunə saxlana bilmədi' });
+        res.json({ success: true, email: result.email });
+    } catch (error) {
+        console.error('Error subscribing newsletter:', error);
+        res.status(500).json({ error: 'Abunə zamanı xəta baş verdi' });
+    }
+});
+
+// API: List Subscribers (Auth)
+app.get('/api/subscribers', authenticateToken, async (req, res) => {
+    try {
+        const subscribers = await getStoredSubscribers();
+        res.json(subscribers);
+    } catch (error) {
+        console.error('Error reading subscribers:', error);
+        res.status(500).json({ error: 'Abunələr yüklənə bilmədi' });
+    }
+});
+
 // Helper: Get Users
 const getUsers = async () => {
     try {
@@ -1055,7 +1555,7 @@ const saveUsers = async (users) => {
 app.get('/api/events', async (req, res) => {
     try {
         const data = await getContent('events', []);
-        res.json(data);
+        res.json(normalizeEventItems(data));
     } catch (error) {
         console.error('Error reading events:', error);
         res.status(500).json({ error: 'Failed to read events' });
@@ -1065,11 +1565,33 @@ app.get('/api/events', async (req, res) => {
 // API: Save Events
 app.post('/api/events', async (req, res) => {
     try {
-        const events = normalizeListPayload(req.body);
-        if (!events) return res.status(400).json({ error: 'Invalid events payload' });
+        const previousEvents = await getContent('events', []);
+        const eventsPayload = normalizeListPayload(req.body);
+        if (!eventsPayload) return res.status(400).json({ error: 'Invalid events payload' });
+        const events = normalizeEventItems(eventsPayload);
         const ok = await saveContent('events', events);
         if (!ok) return res.status(500).json({ error: 'Failed to save events' });
-        res.json({ success: true });
+
+        const addedEvents = extractNewEvents(previousEvents, events);
+        let mailStatus = { sent: false, reason: 'not_attempted' };
+        if (addedEvents.length > 0) {
+            try {
+                mailStatus = await notifySubscribersAboutNewEvents(addedEvents, req);
+                if (!mailStatus.sent) {
+                    console.warn('[events] subscriber notification skipped:', mailStatus.reason);
+                }
+            } catch (mailError) {
+                console.error('[events] subscriber notification failed:', mailError?.message || mailError);
+                mailStatus = { sent: false, reason: 'mail_error' };
+            }
+        }
+
+        res.json({
+            success: true,
+            addedEventsCount: addedEvents.length,
+            mailSent: Boolean(mailStatus.sent),
+            mailStatus
+        });
     } catch (error) {
         console.error('Error saving events:', error);
         res.status(500).json({ error: 'Failed to save events' });
@@ -1486,6 +2008,32 @@ app.post('/api/drivers', async (req, res) => {
     }
 });
 
+// API: Manual Drivers Ranking Notification (Auth)
+app.post('/api/notifications/drivers-ranking', authenticateToken, async (req, res) => {
+    try {
+        const approved = req.body?.approved === true;
+        if (!approved) {
+            return res.status(400).json({
+                success: false,
+                error: 'Bildiriş göndərilməsi üçün admin təsdiqi tələb olunur'
+            });
+        }
+        const note = String(req.body?.note || '').trim();
+        const mailStatus = await notifySubscribersAboutDriversRankingChange(note);
+        if (!mailStatus.sent) {
+            return res.status(400).json({
+                success: false,
+                error: 'Bildiriş göndərilmədi',
+                mailStatus
+            });
+        }
+        res.json({ success: true, mailStatus });
+    } catch (error) {
+        console.error('Error sending drivers ranking notification:', error);
+        res.status(500).json({ success: false, error: 'Bildiriş göndərilə bilmədi' });
+    }
+});
+
 // API: Submit Application
 app.post('/api/applications', async (req, res) => {
     const rawName = req.body?.name;
@@ -1497,6 +2045,9 @@ app.post('/api/applications', async (req, res) => {
     const contact = String(rawContact || '').trim();
     const type = String(rawType || '').trim();
     const content = String(rawContent || '').trim();
+    const parsedContent = safeParseJsonObject(content);
+    const isPilotType = type.toLowerCase().includes('pilot');
+    let pilotPayload = null;
 
     if (!name || !contact || !type || !content) {
         return res.status(400).json({ error: 'Bütün sahələr doldurulmalıdır' });
@@ -1506,17 +2057,59 @@ app.post('/api/applications', async (req, res) => {
         return res.status(400).json({ error: 'Sahə uzunluğu limiti aşıldı' });
     }
 
-    if (type.toLowerCase().includes('pilot') && content.trim().startsWith('{')) {
+    if (isPilotType && content.trim().startsWith('{')) {
         try {
-            const payload = JSON.parse(content);
-            const requiredPilotFields = ['event', 'car', 'tire', 'engine', 'club'];
+            const payload = parsedContent || JSON.parse(content);
+            pilotPayload = payload;
+            const requiredPilotFields = ['event', 'car', 'tire', 'engine', 'club', 'whatsapp'];
             const hasAll = requiredPilotFields.every((key) => String(payload?.[key] || '').trim().length > 0);
             if (!hasAll) {
                 return res.status(400).json({ error: 'Pilot müraciəti üçün bütün texniki sahələr məcburidir' });
             }
+            const wpCandidate = normalizeWhatsAppNumber(payload?.whatsapp || contact);
+            if (!wpCandidate) {
+                return res.status(400).json({ error: 'Pilot müraciəti üçün düzgün WhatsApp nömrəsi məcburidir' });
+            }
         } catch {
             return res.status(400).json({ error: 'Pilot müraciəti məlumatları yanlışdır' });
         }
+
+        try {
+            const events = normalizeEventItems(await getContent('events', []));
+            const eventIdRaw = Number(pilotPayload?.eventId);
+            const byId = Number.isFinite(eventIdRaw)
+                ? events.find((event) => Number(event?.id) === eventIdRaw)
+                : null;
+            const requestedTitle = String(pilotPayload?.event || '').trim().toLocaleLowerCase('az');
+            const byTitle = !byId && requestedTitle
+                ? events.find((event) => String(event?.title || '').trim().toLocaleLowerCase('az') === requestedTitle)
+                : null;
+            const matchedEvent = byId || byTitle;
+
+            if (matchedEvent && !isRegistrationEnabled(matchedEvent?.registrationEnabled, true)) {
+                return res.status(403).json({ error: 'Bu tədbir üçün qeydiyyat müvəqqəti dayandırılıb' });
+            }
+        } catch (eventCheckError) {
+            console.warn('[applications] registration status check failed:', eventCheckError?.message || eventCheckError);
+        }
+    }
+
+    // Newsletter submissions are also persisted in subscribers store.
+    try {
+        const source = String(parsedContent?.source || '').trim().toLowerCase();
+        const candidateEmail = normalizeSubscriberEmail(parsedContent?.email || contact);
+        if ((isNewsletterType(type) || source.includes('newsletter')) && candidateEmail) {
+            const subResult = await upsertSubscriber({
+                email: candidateEmail,
+                name,
+                source: source || 'applications'
+            });
+            if (!subResult.ok) {
+                console.warn('[applications] newsletter subscriber could not be saved:', candidateEmail);
+            }
+        }
+    } catch (subscriberError) {
+        console.warn('[applications] subscriber sync failed:', subscriberError?.message || subscriberError);
     }
 
     try {
@@ -1526,6 +2119,7 @@ app.post('/api/applications', async (req, res) => {
         );
 
         let mailStatus = { sent: false, reason: 'not_attempted' };
+        let whatsappStatus = { sent: false, reason: 'not_attempted' };
         try {
             mailStatus = await sendApplicationNotificationEmail({ name, contact, type, content });
             if (!mailStatus.sent) {
@@ -1536,7 +2130,32 @@ app.post('/api/applications', async (req, res) => {
             mailStatus = { sent: false, reason: 'mail_error' };
         }
 
-        res.json({ success: true, mailSent: Boolean(mailStatus.sent) });
+        if (isPilotType) {
+            try {
+                const locale = normalizeLocaleCode(parsedContent?.locale || req.body?.locale || req.headers['x-site-language'] || 'AZ');
+                const eventTitle = String(parsedContent?.event || '').trim();
+                const whatsapp = String(parsedContent?.whatsapp || contact).trim();
+                whatsappStatus = await sendPilotApplicationWhatsAppNotifications({
+                    name,
+                    whatsapp,
+                    eventTitle,
+                    locale
+                });
+                if (!whatsappStatus.sent) {
+                    console.warn('[applications] whatsapp notification skipped:', whatsappStatus.reason);
+                }
+            } catch (whatsappError) {
+                console.error('[applications] whatsapp notification failed:', whatsappError?.message || whatsappError);
+                whatsappStatus = { sent: false, reason: 'whatsapp_error' };
+            }
+        }
+
+        res.json({
+            success: true,
+            mailSent: Boolean(mailStatus.sent),
+            whatsappSent: Boolean(whatsappStatus.sent),
+            whatsappStatus
+        });
     } catch (error) {
         console.error('Error submitting application:', error);
         res.status(500).json({ error: 'Müraciət göndərilərkən xəta baş verdi', code: error?.code || 'db_error' });

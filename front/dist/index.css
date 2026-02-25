@@ -242,6 +242,7 @@ a {
 .language-picker {
   position: relative;
   isolation: isolate;
+  z-index: 70;
 }
 
 .language-picker::before {
@@ -280,6 +281,7 @@ a {
     inset 0 0 0 1px rgba(255, 255, 255, 0.02);
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .language-picker__trigger::before {
@@ -378,6 +380,7 @@ a {
   backdrop-filter: blur(8px);
   transform-origin: top right;
   animation: language-picker-pop 0.18s ease-out;
+  pointer-events: auto;
 }
 
 @keyframes language-picker-pop {

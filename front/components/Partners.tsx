@@ -99,7 +99,10 @@ const Partners: React.FC = () => {
 
               {p.name?.trim() && (
                 <div className="relative">
-                  <span className="text-2xl md:text-4xl font-black italic tracking-tighter uppercase text-gray-600 group-hover:text-white transition-colors duration-300">
+                  <span
+                    translate="no"
+                    className="notranslate text-2xl md:text-4xl font-black italic tracking-tighter uppercase text-gray-600 group-hover:text-white transition-colors duration-300"
+                  >
                     {p.name}
                   </span>
                   <div className={`absolute -bottom-2 left-0 w-0 h-1.5 transition-all duration-300 group-hover:w-full bg-[#FF4D00] shadow-[0_0_10px_rgba(255,77,0,0.5)]`}></div>

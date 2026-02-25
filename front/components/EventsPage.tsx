@@ -23,17 +23,21 @@ interface EventItem {
   pdf_url?: string;
   pdfURL?: string;
   status: 'planned' | 'past';
+  registrationEnabled?: boolean;
 }
 
 interface EventsPageProps {
   onViewChange: (view: 'home' | 'about' | 'news' | 'events' | 'drivers' | 'rules' | 'contact' | 'gallery') => void;
+  openMode?: 'default' | 'force-list';
 }
 
-const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
-  const { getText } = useSiteContent('eventspage');
+const EventsPage: React.FC<EventsPageProps> = ({ onViewChange, openMode = 'default' }) => {
+  const { getText, language } = useSiteContent('eventspage');
   const requiredFieldsToast = getText('PILOT_FORM_TOAST_REQUIRED', 'Zəhmət olmasa bütün sahələri doldurun.');
   const submitSuccessToast = getText('PILOT_FORM_TOAST_SUCCESS', 'Qeydiyyat müraciətiniz uğurla göndərildi!');
   const submitErrorToast = getText('PILOT_FORM_TOAST_ERROR', 'Gondərilmə zamanı xəta baş verdi.');
+  const whatsappRequiredToast = getText('PILOT_FORM_TOAST_WHATSAPP_REQUIRED', 'WhatsApp nömrəsini düzgün formatda daxil edin.');
+  const registrationClosedToast = getText('PILOT_FORM_TOAST_REG_CLOSED', 'Bu tədbir üçün qeydiyyat hazırda bağlıdır.');
 
   const [eventsData, setEventsData] = useState<EventItem[]>([]);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
@@ -50,6 +54,16 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
       if (date.getTime() < today.getTime()) return 'past';
     }
     return 'planned';
+  };
+
+  const normalizeRegistrationEnabled = (rawValue: unknown) => {
+    if (typeof rawValue === 'boolean') return rawValue;
+    const normalized = String(rawValue || '').trim().toLocaleLowerCase('az');
+    if (!normalized) return true;
+    if (['false', '0', 'no', 'off', 'disabled', 'deactive', 'inactive', 'bagli', 'bağlı'].includes(normalized)) {
+      return false;
+    }
+    return true;
   };
 
   const extractYoutubeId = (url: string) => {
@@ -86,7 +100,8 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
             const normalizedEvents = data.map((item: any) => ({
               ...item,
               status: normalizeEventStatus(item?.status, item?.date),
-              youtubeUrl: String(item?.youtubeUrl || item?.youtube_url || item?.url || '').trim()
+              youtubeUrl: String(item?.youtubeUrl || item?.youtube_url || item?.url || '').trim(),
+              registrationEnabled: normalizeRegistrationEnabled(item?.registrationEnabled ?? item?.registration_enabled)
             }));
             const sortedEvents = normalizedEvents.sort((a: any, b: any) =>
               new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -107,11 +122,25 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
   const [regStep, setRegStep] = useState<'select' | 'pilot' | null>(null);
 
   useEffect(() => {
+    if (openMode !== 'force-list') return;
+    try {
+      sessionStorage.removeItem(EVENTS_TARGET_EVENT_KEY);
+    } catch {
+      // ignore storage access errors
+    }
+    setSelectedEvent(null);
+    setRegStep(null);
+    setPlayingVideoId(null);
+    setActiveTab('planned');
+  }, [openMode]);
+
+  useEffect(() => {
     window.scrollTo(0, 0);
   }, [selectedEvent]);
 
   useEffect(() => {
     if (!eventsData.length) return;
+    if (openMode === 'force-list') return;
 
     try {
       const raw = (sessionStorage.getItem(EVENTS_TARGET_EVENT_KEY) || '').trim();
@@ -148,7 +177,16 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
     } catch {
       // ignore storage access errors
     }
-  }, [eventsData]);
+  }, [eventsData, openMode]);
+
+  useEffect(() => {
+    if (!eventsData.length || selectedEvent) return;
+    const hasPlanned = eventsData.some((event) => event.status === 'planned');
+    const hasPast = eventsData.some((event) => event.status === 'past');
+    if (!hasPlanned && hasPast && activeTab !== 'past') {
+      setActiveTab('past');
+    }
+  }, [eventsData, selectedEvent, activeTab]);
 
   const VideoModal = () => {
     if (!playingVideoId) return null;
@@ -165,7 +203,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
           >
             <X size={40} strokeWidth={1.5} />
           </button>
-          <CsPlayer videoId={playingVideoId} />
+          <CsPlayer videoId={playingVideoId} autoplay />
         </div>
       </div>
     );
@@ -174,6 +212,16 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
   const handleJoinSpectator = () => {
     const spectatorUrl = getText('SPECTATOR_TICKET_URL', 'https://iticket.az');
     window.open(spectatorUrl, '_blank');
+  };
+
+  const openRegistrationModal = () => {
+    if (!selectedEvent) return;
+    if (selectedEvent.status !== 'planned') return;
+    if (selectedEvent.registrationEnabled === false) {
+      toast.error(registrationClosedToast);
+      return;
+    }
+    setRegStep('select');
   };
 
   const renderRegistrationModal = () => {
@@ -255,23 +303,31 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
                 const form = e.target as HTMLFormElement;
                 const fd = new FormData(form);
                 const name = String(fd.get('name') || '').trim();
-                const contact = String(fd.get('contact') || '').trim();
+                const whatsapp = String(fd.get('whatsapp') || '').trim();
                 const car = String(fd.get('car') || '').trim();
                 const tire = String(fd.get('tire') || '').trim();
                 const engine = String(fd.get('engine') || '').trim();
                 const club = String(fd.get('club') || '').trim();
+                const whatsappDigits = whatsapp.replace(/[^\d+]/g, '');
 
-                if (!name || !contact || !car || !tire || !engine || !club) {
+                if (!name || !whatsapp || !car || !tire || !engine || !club) {
                   toast.error(requiredFieldsToast);
+                  return;
+                }
+                if (whatsappDigits.length < 10) {
+                  toast.error(whatsappRequiredToast);
                   return;
                 }
 
                 const data = {
                   name,
-                  contact,
+                  contact: whatsapp,
                   type: 'Pilot Registration',
                   content: JSON.stringify({
+                    eventId: selectedEvent?.id,
                     event: selectedEvent?.title,
+                    locale: language,
+                    whatsapp,
                     car,
                     tire,
                     engine,
@@ -301,8 +357,8 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
                   <input name="name" required type="text" className="w-full bg-black border border-white/5 text-white p-5 font-black italic text-sm focus:ring-1 focus:ring-[#FF4D00] outline-none uppercase placeholder:text-gray-800" placeholder={getText('PLACEHOLDER_NAME', 'Tam ad daxil edin')} />
                 </div>
                 <div className="space-y-4">
-                  <label className="text-gray-600 font-black italic text-[10px] uppercase tracking-widest">{getText('FIELD_PHONE', 'TELEFON')}</label>
-                  <input name="contact" required type="text" className="w-full bg-black border border-white/5 text-white p-5 font-black italic text-sm focus:ring-1 focus:ring-[#FF4D00] outline-none placeholder:text-gray-800" placeholder={getText('PLACEHOLDER_PHONE', '+994 -- --- -- --')} />
+                  <label className="text-gray-600 font-black italic text-[10px] uppercase tracking-widest">{getText('FIELD_WHATSAPP', 'WHATSAPP NÖMRƏSİ')}</label>
+                  <input name="whatsapp" required type="tel" className="w-full bg-black border border-white/5 text-white p-5 font-black italic text-sm focus:ring-1 focus:ring-[#FF4D00] outline-none placeholder:text-gray-800" placeholder={getText('PLACEHOLDER_WHATSAPP', '+994 50 123 45 67')} />
                 </div>
                 <div className="space-y-4">
                   <label className="text-gray-600 font-black italic text-[10px] uppercase tracking-widest">{getText('FIELD_CAR_MODEL', 'AVTOMOBİLİN MARKA/MODELİ')}</label>
@@ -388,11 +444,16 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
 
               {selectedEvent.status === 'planned' && (
                 <button
-                  onClick={() => setRegStep('select')}
+                  onClick={openRegistrationModal}
                   className="bg-[#FF4D00] text-black px-12 py-6 font-black italic text-lg uppercase transform -skew-x-12 hover:bg-white transition-all flex items-center gap-3 shadow-[0_10px_40px_rgba(255,77,0,0.3)]"
                 >
                   <span className="transform skew-x-12 flex items-center gap-3">{getText('BTN_JOIN_EVENT', 'TƏDBİRƏ QOŞUL')} <ArrowRight size={24} /></span>
                 </button>
+              )}
+              {selectedEvent.status === 'planned' && selectedEvent.registrationEnabled === false && (
+                <div className="bg-white/10 border border-white/20 text-white px-8 py-4 font-black italic text-xs uppercase tracking-widest transform -skew-x-12">
+                  <span className="transform skew-x-12 block">{getText('BTN_JOIN_EVENT_DISABLED', 'QEYDİYYAT MÜVƏQQƏTİ BAĞLIDIR')}</span>
+                </div>
               )}
             </div>
           </div>
@@ -542,32 +603,43 @@ const EventsPage: React.FC<EventsPageProps> = ({ onViewChange }) => {
       )}
 
       {activeTab === 'planned' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {plannedEvents.filter(e => e.id !== featuredEvent?.id).map((event) => (
-            <div
-              key={event.id}
-              onClick={() => setSelectedEvent(event)}
-              className="group cursor-pointer relative aspect-[4/5] bg-[#111] border border-white/5 overflow-hidden rounded-sm hover:border-[#FF4D00]/40 transition-all shadow-xl"
-            >
-              <img
-                src={event.img}
-                className="w-full h-full object-cover grayscale opacity-50 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110"
-                alt={event.title}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+        plannedEvents.filter(e => e.id !== featuredEvent?.id).length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {plannedEvents.filter(e => e.id !== featuredEvent?.id).map((event) => (
+              <div
+                key={event.id}
+                onClick={() => setSelectedEvent(event)}
+                className="group cursor-pointer relative aspect-[4/5] bg-[#111] border border-white/5 overflow-hidden rounded-sm hover:border-[#FF4D00]/40 transition-all shadow-xl"
+              >
+                <img
+                  src={event.img}
+                  className="w-full h-full object-cover grayscale opacity-50 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110"
+                  alt={event.title}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
 
-              <div className="absolute bottom-8 left-8 right-8">
-                <div className="text-[#FF4D00] font-black italic text-[10px] mb-2 uppercase tracking-widest">{event.date}</div>
-                <h4 className="text-3xl font-black italic text-white uppercase leading-none tracking-tighter group-hover:text-[#FF4D00] transition-colors">
-                  {event.title}
-                </h4>
-                <div className="mt-6 bg-white/5 border border-white/10 text-white px-5 py-2 font-black italic text-[8px] inline-block transform -skew-x-12 group-hover:bg-[#FF4D00] group-hover:text-black transition-all">
-                  <span className="transform skew-x-12 block uppercase tracking-[0.2em]">{getText('BTN_VIEW_DETAILS', 'ƏTRAFLI BAX')}</span>
+                <div className="absolute bottom-8 left-8 right-8">
+                  <div className="text-[#FF4D00] font-black italic text-[10px] mb-2 uppercase tracking-widest">{event.date}</div>
+                  <h4 className="text-3xl font-black italic text-white uppercase leading-none tracking-tighter group-hover:text-[#FF4D00] transition-colors">
+                    {event.title}
+                  </h4>
+                  <div className="mt-6 bg-white/5 border border-white/10 text-white px-5 py-2 font-black italic text-[8px] inline-block transform -skew-x-12 group-hover:bg-[#FF4D00] group-hover:text-black transition-all">
+                    <span className="transform skew-x-12 block uppercase tracking-[0.2em]">{getText('BTN_VIEW_DETAILS', 'ƏTRAFLI BAX')}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-20 text-center border border-white/5 bg-[#111] rounded-sm shadow-2xl">
+            <p className="text-gray-400 font-black italic uppercase tracking-widest text-sm">
+              {getText('NO_PLANNED_EVENTS', 'PLANLANAN TƏDBİR YOXDUR')}
+            </p>
+            <p className="text-gray-600 font-bold italic uppercase tracking-[0.2em] text-[10px] mt-3">
+              {getText('NO_PLANNED_EVENTS_HINT', 'YENİ TƏDBİRLƏR ƏLAVƏ OLUNDUQDA BURADA GÖRÜNƏCƏK')}
+            </p>
+          </div>
+        )
       ) : (
         <div className="space-y-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

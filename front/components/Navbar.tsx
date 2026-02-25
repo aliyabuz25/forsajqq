@@ -14,19 +14,46 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
   const languagePickerRef = useRef<HTMLDivElement | null>(null);
   const GTRANSLATE_SCRIPT_ID = 'gtranslate-widget-script';
   const GTRANSLATE_WRAPPER_CLASS = 'gtranslate_wrapper';
-  const languageMap: Record<string, string> = { AZ: 'az', RU: 'ru', ENG: 'en' };
+  const languageMap: Record<string, string> = { AZ: 'az|az', RU: 'az|ru', ENG: 'az|en' };
+
+  const normalizeTranslateCode = (code: string) => {
+    const normalized = (code || '').trim().toLowerCase();
+    if (!normalized) return 'az|az';
+    return normalized.includes('|') ? normalized : `az|${normalized}`;
+  };
+
+  const setGTranslateCookie = (code: string) => {
+    const normalized = normalizeTranslateCode(code);
+    const [, target = 'az'] = normalized.split('|');
+    const cookieValue = `/az/${target}`;
+    const hostname = window.location.hostname;
+    document.cookie = `googtrans=${cookieValue};path=/;max-age=31536000`;
+    document.cookie = `googtrans=${cookieValue};domain=${hostname};path=/;max-age=31536000`;
+  };
 
   const applyGTranslateLanguage = (langCode: string, attempt = 0) => {
+    const normalizedCode = normalizeTranslateCode(langCode);
     const select =
       (document.querySelector(`.${GTRANSLATE_WRAPPER_CLASS} .gt_selector`) as HTMLSelectElement | null)
       || (document.querySelector('.gt_selector') as HTMLSelectElement | null);
     if (select) {
-      select.value = langCode;
+      const hasOption = Array.from(select.options).some((option) => option.value === normalizedCode);
+      if (!hasOption) {
+        if (attempt < 20) {
+          window.setTimeout(() => applyGTranslateLanguage(normalizedCode, attempt + 1), 250);
+        }
+        return;
+      }
+      select.value = normalizedCode;
       select.dispatchEvent(new Event('change', { bubbles: true }));
+      const w = window as any;
+      if (typeof w.doGTranslate === 'function') {
+        w.doGTranslate(normalizedCode);
+      }
       return;
     }
     if (attempt < 20) {
-      window.setTimeout(() => applyGTranslateLanguage(langCode, attempt + 1), 250);
+      window.setTimeout(() => applyGTranslateLanguage(normalizedCode, attempt + 1), 250);
     }
   };
 
@@ -50,8 +77,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
   };
 
   const applySiteLanguage = (langCode: string) => {
+    const normalizedCode = normalizeTranslateCode(langCode);
     ensureGTranslate();
-    applyGTranslateLanguage(langCode);
+    setGTranslateCookie(normalizedCode);
+    applyGTranslateLanguage(normalizedCode);
   };
 
   useEffect(() => {
@@ -59,18 +88,18 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
   }, []);
 
   useEffect(() => {
-    applySiteLanguage(languageMap[language] || 'az');
+    applySiteLanguage(languageMap[language] || 'az|az');
   }, [language]);
 
   useEffect(() => {
     if (!isLangOpen) return;
 
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+    const handlePointerOutside = (event: PointerEvent) => {
       const node = languagePickerRef.current;
       if (!node) return;
-      if (!node.contains(event.target as Node)) {
-        setIsLangOpen(false);
-      }
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+      const clickedInside = path.includes(node) || node.contains(event.target as Node);
+      if (!clickedInside) setIsLangOpen(false);
     };
 
     const handleEscape = (event: KeyboardEvent) => {
@@ -79,13 +108,11 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    document.addEventListener('pointerdown', handlePointerOutside);
     document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handlePointerOutside);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isLangOpen]);
@@ -243,6 +270,20 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
 
   const languages = ['AZ', 'RU', 'ENG'];
 
+  const handleLanguageSelect = (nextLanguage: string) => {
+    if (nextLanguage === language) {
+      setIsLangOpen(false);
+      return;
+    }
+
+    setSiteLanguage(nextLanguage as any);
+    applySiteLanguage(languageMap[nextLanguage] || 'az|az');
+    setIsLangOpen(false);
+
+    // Ensure all sections rehydrate with the newly selected locale.
+    window.setTimeout(() => window.location.reload(), 80);
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-[#0A0A0A]/95 backdrop-blur-md border-b border-white/5 px-6 lg:px-20 py-4 flex items-center justify-between shadow-2xl">
       <div
@@ -289,11 +330,11 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
 
       <div
         ref={languagePickerRef}
-        className={`language-picker relative ${isLangOpen ? 'language-picker--open' : ''}`}
+        className={`language-picker relative z-[70] ${isLangOpen ? 'language-picker--open' : ''}`}
       >
         <button
           type="button"
-          onClick={() => setIsLangOpen(!isLangOpen)}
+          onClick={() => setIsLangOpen((prev) => !prev)}
           className="language-picker__trigger inline-flex items-center justify-between gap-2"
           aria-label="Select language"
           aria-haspopup="listbox"
@@ -312,11 +353,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange }) => {
                 type="button"
                 role="option"
                 aria-selected={language === lang}
-                onClick={() => {
-                  setSiteLanguage(lang as any);
-                  applySiteLanguage(languageMap[lang] || 'az');
-                  setIsLangOpen(false);
-                }}
+                onClick={() => handleLanguageSelect(lang)}
                 className={`language-picker__item block w-full text-left ${language === lang ? 'language-picker__item--active' : ''}`}
               >
                 {lang}

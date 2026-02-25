@@ -189,7 +189,8 @@ const GalleryPage: React.FC = () => {
                   thumbnail: v.thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : ''),
                   duration: v.duration || '00:00'
                 };
-              });
+              })
+              .filter((video: any) => !!video.videoId);
             const nextSignature = buildVideosSignature(mapped);
             if (nextSignature !== videosSignatureRef.current) {
               videosSignatureRef.current = nextSignature;
@@ -366,7 +367,7 @@ const GalleryPage: React.FC = () => {
             <X size={40} strokeWidth={1.5} />
           </button>
 
-          <CsPlayer videoId={playingVideoId} />
+          <CsPlayer videoId={playingVideoId} autoplay />
         </div>
       </div>
     );
@@ -538,7 +539,10 @@ const GalleryPage: React.FC = () => {
                 dynamicVideos.map((video: any) => (
                   <div
                     key={video.id}
-                    onClick={() => setPlayingVideoId(video.videoId)}
+                    onClick={() => {
+                      if (!video.videoId) return;
+                      setPlayingVideoId(video.videoId);
+                    }}
                     className="group/video relative flex flex-col bg-[#111] border border-white/5 overflow-hidden transition-all duration-300 hover:border-[#FF4D00]/50 hover:shadow-2xl shadow-lg cursor-pointer"
                   >
                     <div className="aspect-video relative overflow-hidden">
